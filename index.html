@@ -86,9 +86,11 @@
   #tDown  { width: 32%; height: 32%; bottom: 0; left: 34%; }
   #tLeft  { width: 32%; height: 32%; top: 34%;  left: 0; }
   #tRight { width: 32%; height: 32%; top: 34%;  right: 0; }
-  #tActions { position: absolute; right: 4vw; bottom: 6vh; width: 44vw; height: 34vw; max-width: 220px; max-height: 170px; }
-  #tKick  { width: 34%; padding-bottom: 34%; right: 0; bottom: 30%; font-size: 16px; }
-  #tPunch { width: 34%; padding-bottom: 34%; right: 30%; bottom: 0; font-size: 16px; }
+  #tActions { position: absolute; right: 4vw; bottom: 5vh; width: 54vw; height: 54vw; max-width: 250px; max-height: 250px; }
+  #tJump  { width: 30%; padding-bottom: 30%; top: 0;   left: 35%; font-size: 15px; }
+  #tParry { width: 30%; padding-bottom: 30%; bottom: 0; left: 35%; font-size: 15px; }
+  #tPunch { width: 30%; padding-bottom: 30%; top: 35%; left: 0;   font-size: 15px; }
+  #tKick  { width: 30%; padding-bottom: 30%; top: 35%; right: 0;  font-size: 15px; }
   #tPause { display: none; position: fixed; top: max(10px, env(safe-area-inset-top)); right: 10px; width: 38px; height: 38px; font-size: 16px; z-index: 60; pointer-events: auto; }
 </style>
 </head>
@@ -123,6 +125,8 @@
     <button class="tbtn" id="tRight">▶</button>
   </div>
   <div id="tActions">
+    <button class="tbtn" id="tJump">跳</button>
+    <button class="tbtn" id="tParry">擋</button>
     <button class="tbtn" id="tKick">踢</button>
     <button class="tbtn" id="tPunch">拳</button>
   </div>
@@ -332,6 +336,17 @@ parrySfxAudio.volume = 0.9;
 function playParrySfx() {
   const node = parrySfxAudio.cloneNode(true);
   node.volume = parrySfxAudio.volume;
+  node.play().catch(() => {});
+}
+
+// BOSSの火球発射時の効果音
+const bossFireballSfxAudio = new Audio('data:audio/mp3;base64,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TUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv/7kmTNgwQ6XMnDTBxSOwK67wEjHY+RlSKsJG9AyIvkFAGI+KqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqBU2vtCwyCE0FokjTSrEDqE0RFgkrUOWCaIiy1NUyxWioclK1VDktv5/+rVVXKqDVUiVSVdv+qmGq7////6aaLrdpqm///QTTVpYrRUSEWnB//6hbiwuK/1s/FhcVMu/4qLNiwv/q/xTiotVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+5Jkdg/yYwe8GSYYQh4ABrMAAgAAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
+bossFireballSfxAudio.loop = false;
+bossFireballSfxAudio.preload = 'auto';
+bossFireballSfxAudio.volume = 0.9;
+function playBossFireballSfx() {
+  const node = bossFireballSfxAudio.cloneNode(true);
+  node.volume = bossFireballSfxAudio.volume;
   node.play().catch(() => {});
 }
 
@@ -906,6 +921,7 @@ const sfxAudioBaseVolumes = new Map([
   [playerDeadAudio, 1.0],
   [bossDeadAudio, 1.0],
   [parrySfxAudio, 0.9],
+  [bossFireballSfxAudio, 0.9],
 ]);
 function applySfxVolume() {
   sfxAudioBaseVolumes.forEach((base, audio) => { audio.volume = base * (sfxVolume/10); });
@@ -1059,11 +1075,12 @@ function menuConfirm() {
 }
 function menuBack() {
   if (menuReturnTo === 'paused') {
-    // PAUSEメニューの[設定]から開いた場合は、PAUSEメニューへ直接戻す
+    // PAUSEメニューの[設定]/[操作説明]から開いた場合は、PAUSEメニューへ直接戻す
+    const cameFromHelp = menuScreen === 'help';
     menuReturnTo = 'title';
     state = 'paused';
     pauseScreen = 'main';
-    pauseIndex = 1; // 設定を選んでいた項目に合わせておく
+    pauseIndex = cameFromHelp ? 2 : 1; // 開いていた項目に合わせておく
     return;
   }
   if (menuScreen === 'main') {
@@ -1101,7 +1118,7 @@ function returnToMainMenuFromPause() {
   playChinaMusic();
 }
 function pauseItemCount() {
-  if (pauseScreen === 'main') return 3;
+  if (pauseScreen === 'main') return 4;
   if (pauseScreen === 'confirmReturn') return 2;
   return 0;
 }
@@ -1119,6 +1136,11 @@ function pauseConfirm() {
       menuScreen = 'settings';
       menuIndex = 0;
     } else if (pauseIndex === 2) {
+      menuReturnTo = 'paused';
+      state = 'menu';
+      menuScreen = 'help';
+      menuIndex = 0;
+    } else if (pauseIndex === 3) {
       pauseScreen = 'confirmReturn';
       pauseIndex = 1; // デフォルトは「否」を選択しておく(誤操作防止)
     }
@@ -1506,8 +1528,8 @@ let mangaTexts = [];
 let mangaCooldown = 0;
 const HIT_WORDS = ['バキ!','ドン!','ズガッ!','ガツン!'];
 const DEFEAT_WORDS = ['轟!','KO!'];
-function spawnMangaText(word, x, y, big) {
-  mangaTexts.push({ word, x, y: y - 10, life: 0, maxLife: 34, big: !!big, rot: (Math.random()-0.5)*0.3 });
+function spawnMangaText(word, x, y, big, color) {
+  mangaTexts.push({ word, x, y: y - 10, life: 0, maxLife: 34, big: !!big, rot: (Math.random()-0.5)*0.3, color: color || null });
 }
 function maybeSpawnHitText(x, y) {
   if (mangaCooldown > 0) return;
@@ -1535,7 +1557,7 @@ function drawMangaTexts() {
     ctx.lineWidth = 5;
     ctx.strokeStyle = '#1a1410';
     ctx.strokeText(t.word, 0, 0);
-    ctx.fillStyle = t.big ? '#ffdd33' : '#fff44d';
+    ctx.fillStyle = t.color || (t.big ? '#ffdd33' : '#fff44d');
     ctx.fillText(t.word, 0, 0);
     ctx.restore();
   });
@@ -1655,7 +1677,7 @@ const STR = {
     helpDuck: '蹲下', helpDuckDesc: '按下方向鍵蹲下閃避',
     helpPunch: '揮拳', helpPunchDesc: '快速攻擊(輕按即出拳)',
     helpKick: '踢腿', helpKickDesc: '範圍較大的攻擊',
-    helpCharge: '波動拳', helpChargeDesc: '長按揮拳鍵蓄力,放開後發射飛行道具',
+    helpCharge: '波動拳', helpChargeDesc: '長按揮拳鍵蓄力,放開後發射飛行道具', helpChargeKey: '氣功',
     helpParry: '招架', helpParryDesc: '在敵人攻擊命中前按下,可擊退小兵並反彈BOSS火球',
     langTitle: '選擇語言',
     langZh: '中文', langJa: '日文', langEn: '英文',
@@ -1665,7 +1687,7 @@ const STR = {
     enterLabel: 'ENTER', startLabel: '開始', continueLabel: '繼續', startBattleLabel: '開始戰鬥',
     backToTitle: '按任意鍵回到標題畫面',
     retryPrompt: '按%s重新挑戰', continuePrompt: '按%s繼續', startBattlePrompt: '按%s開始戰鬥', startPrompt: '按%s開始',
-    pauseTitle: 'PAUSE', pauseResume: '繼續遊戲', pauseSettings: '設定', pauseReturnMain: '返回主選單',
+    pauseTitle: 'PAUSE', pauseResume: '繼續遊戲', pauseSettings: '設定', pauseHelp: '操作說明', pauseReturnMain: '返回主選單',
     confirmReturnText: '確定返回?', confirmYes: '是', confirmNo: '否',
     hintMove: '移動', hintJump: '跳躍', hintDuck: '蹲下', hintPunch: '揮拳(長按蓄力放波動拳)', hintKick: '踢腿', hintStart: '開始', hintStick: '方向鍵/左搖桿',
     pressAnyKey: '請按任意鍵',
@@ -1681,7 +1703,7 @@ const STR = {
     helpDuck: 'しゃがみ', helpDuckDesc: '下キーでしゃがんで回避',
     helpPunch: 'パンチ', helpPunchDesc: '素早い攻撃(軽く押すと繰り出す)',
     helpKick: 'キック', helpKickDesc: '範囲の広い攻撃',
-    helpCharge: '波動拳', helpChargeDesc: 'パンチキーを長押しでチャージ、離すと飛び道具発射',
+    helpCharge: '波動拳', helpChargeDesc: 'パンチキーを長押しでチャージ、離すと飛び道具発射', helpChargeKey: '気功',
     helpParry: '格擋', helpParryDesc: '敵の攻撃が当たる直前に押すと、雑魚を撃退しBOSSの火球を跳ね返せる',
     langTitle: '言語選択',
     langZh: '中国語', langJa: '日本語', langEn: '英語',
@@ -1691,7 +1713,7 @@ const STR = {
     enterLabel: 'ENTER', startLabel: 'スタート', continueLabel: '続ける', startBattleLabel: '戦闘開始',
     backToTitle: '任意のキーでタイトルへ戻る',
     retryPrompt: '%sでリトライ', continuePrompt: '%sで進む', startBattlePrompt: '%sで戦闘開始', startPrompt: '%sでスタート',
-    pauseTitle: 'PAUSE', pauseResume: 'ゲームに戻る', pauseSettings: '設定', pauseReturnMain: 'メインメニューへ戻る',
+    pauseTitle: 'PAUSE', pauseResume: 'ゲームに戻る', pauseSettings: '設定', pauseHelp: '操作説明', pauseReturnMain: 'メインメニューへ戻る',
     confirmReturnText: '本当に戻りますか?', confirmYes: 'はい', confirmNo: 'いいえ',
     hintMove: '移動', hintJump: 'ジャンプ', hintDuck: 'しゃがみ', hintPunch: 'パンチ(長押しで波動拳)', hintKick: 'キック', hintStart: 'スタート', hintStick: '方向キー/左スティック',
     pressAnyKey: 'どれかキーを押してください',
@@ -1707,7 +1729,7 @@ const STR = {
     helpDuck: 'Duck', helpDuckDesc: 'Down arrow key to duck',
     helpPunch: 'Punch', helpPunchDesc: 'Fast attack (quick tap)',
     helpKick: 'Kick', helpKickDesc: 'Attack with longer reach',
-    helpCharge: 'Hadouken', helpChargeDesc: 'Hold punch key to charge, release to fire a projectile',
+    helpCharge: 'Hadouken', helpChargeDesc: 'Hold punch key to charge, release to fire a projectile', helpChargeKey: 'Ki Charge',
     helpParry: 'Parry', helpParryDesc: 'Press right before an attack lands to knock back enemies or reflect the boss\'s fireball',
     langTitle: 'Select Language',
     langZh: 'Chinese', langJa: 'Japanese', langEn: 'English',
@@ -1717,7 +1739,7 @@ const STR = {
     enterLabel: 'ENTER', startLabel: 'Start', continueLabel: 'Continue', startBattleLabel: 'Start Battle',
     backToTitle: 'Press any key to return to title',
     retryPrompt: 'Press %s to retry', continuePrompt: 'Press %s to continue', startBattlePrompt: 'Press %s to start battle', startPrompt: 'Press %s to start',
-    pauseTitle: 'PAUSE', pauseResume: 'Resume', pauseSettings: 'Settings', pauseReturnMain: 'Return to Main Menu',
+    pauseTitle: 'PAUSE', pauseResume: 'Resume', pauseSettings: 'Settings', pauseHelp: 'How to Play', pauseReturnMain: 'Return to Main Menu',
     confirmReturnText: 'Return to main menu?', confirmYes: 'Yes', confirmNo: 'No',
     hintMove: 'Move', hintJump: 'Jump', hintDuck: 'Duck', hintPunch: 'Punch (hold to charge Hadouken)', hintKick: 'Kick', hintStart: 'Start', hintStick: 'D-Pad/Left Stick',
     pressAnyKey: 'Press any key',
@@ -1738,6 +1760,7 @@ let demoPhase = 'walkCenter', demoPhaseTimer = 0; // エンディング演出の
 // 攻撃ボタンの連射防止用:前フレームでの押下状態を記録し、押しっぱなしでは
 // 再発動しない(離してもう一度押した時だけ次の攻撃が出る)ようにする。
 let prevAttackKeyZ = false, prevAttackKeyX = false;
+let prevJumpKey = false; // ジャンプキーの押しっぱなしで連続ジャンプしないようにするためのedge検出
 const LEVEL_LENGTH = 4000;
 
 const player = {
@@ -1833,6 +1856,7 @@ let parryFlashTimer = 0; // 格擋成功時の画面フラッシュ演出タイ�
 function spawnParrySuccessFx(x, y) {
   parryFlashTimer = 8;
   playParrySfx();
+  spawnMangaText('啪!!', x, y - 20, true, '#5CE1FF');
   for (let i=0;i<14;i++) {
     const angle = Math.random()*Math.PI*2;
     const spd = 2 + Math.random()*3;
@@ -2045,7 +2069,9 @@ function update() {
         else if (keys['ArrowRight']) { player.vx = speed; player.facing = 1; }
         else player.vx = 0;
       }
-      if (keys['ArrowUp'] && player.onGround) { player.vy = -8.5; player.onGround = false; sfx.jump(); }
+      const jumpKeyPressed = keys['ArrowUp'];
+      if (jumpKeyPressed && !prevJumpKey && player.onGround) { player.vy = -8.5; player.onGround = false; sfx.jump(); }
+      prevJumpKey = jumpKeyPressed;
     }
 
     player.vy += 0.45; player.y += player.vy;
@@ -2149,8 +2175,14 @@ function update() {
     else if (dx < -4) en.facing = -1;
     const dist = Math.abs(dx);
     if (en.hitCooldown > 0) en.hitCooldown--;
+    if (en.parried && en.hitCooldown <= 0) {
+      // 被弾ポーズ+吹き飛びの演出が終わったところで、最後に死亡させる
+      en.dead = true; en.deathTimer = 0; en.parried = false;
+      return;
+    }
     if (en.hitCooldown > 0) {
-      en.vx = 0; // 被弾硬直中は行動できない(短時間のヒットストップ)
+      if (en.parried) { en.x += en.knockbackVx; en.knockbackVx *= 0.9; } // 格擋成功時は被弾硬直中も水平に吹き飛ばす
+      else en.vx = 0; // 通常の被弾硬直中は行動できない(短時間のヒットストップ)
     } else if (dist > 62) { en.state='approach'; en.vx = en.facing*(en.type==='kicker'?1.6:1.3); en.walkFrame += 0.18; }
     else {
       en.vx = 0; en.state = 'attack'; en.attackTimer++;
@@ -2159,10 +2191,12 @@ function update() {
         const enAtkBox = { x: en.facing===1 ? en.x+en.w : en.x-reach, y: GROUND_Y-en.h+15, w: reach, h: 40 };
         const pBox = { x: player.x, y: GROUND_Y-player.h+15, w: player.w, h: 40 };
         if (rectsOverlap(enAtkBox, pBox) && player.parryTimer > 0 && !en.dead) {
-          // 格擋成功:小兵を撃破し、水平方向へ弾き飛ばす
-          en.dead = true; en.deathTimer = 0; en.hp = 0;
-          en.knockbackVx = en.facing * -7;
-          score += 100; enemiesDefeated++;
+          // 格擋成功:まず被弾リアクションを見せてから吹き飛ばし、最後に死亡させる
+          en.hp = 0;
+          en.parried = true;
+          en.hitCooldown = 20; // 被弾ポーズ+吹き飛び演出の時間
+          en.knockbackVx = en.facing * -14; // 吹き飛ぶ距離を2倍に強化
+          score += 200; enemiesDefeated++; // 格擋成功は通常撃破の1倍(2倍)のスコアを獲得
           spawnParrySuccessFx(player.x + player.w/2, GROUND_Y - player.h/2);
         } else if (rectsOverlap(enAtkBox, pBox) && player.invuln<=0 && !player.dead) {
           player.hp -= 10; player.invuln = 40; player.hitStun = 14; sfx.hit();
@@ -2222,7 +2256,7 @@ function update() {
         const sinceHold = boss.specialTimer - HOLD_END;
         if (sinceHold > 0 && sinceHold % SHOT_LEN === 0 && sinceHold / SHOT_LEN <= shotsTotal) {
           spawnBossFireball();
-          sfx.kick();
+          playBossFireballSfx();
         }
         if (boss.specialTimer > RECOVER_END) {
           boss.state = dist > 90 ? 'approach' : 'attack';
@@ -3498,7 +3532,7 @@ function drawMenuHelp() {
     { img: spriteDuckIdle, label: t('helpDuck'), desc: t('helpDuckDesc'), key: 'S' },
     { img: spritePunchStand, label: t('helpPunch'), desc: t('helpPunchDesc'), key: 'J/X' },
     { img: spriteKickOut, label: t('helpKick'), desc: t('helpKickDesc'), key: 'K/A' },
-    { img: spriteHado1, label: t('helpCharge'), desc: t('helpChargeDesc'), key: t('helpPunch') },
+    { img: spriteHado1, label: t('helpCharge'), desc: t('helpChargeDesc'), key: t('helpChargeKey') },
     { img: spriteParry, label: t('helpParry'), desc: t('helpParryDesc'), key: 'L/Y' },
   ];
   const startY = 92, lineH = 38;
@@ -3538,8 +3572,8 @@ function drawPauseOverlay() {
   ctx.fillText(t('pauseTitle'), W/2, 90);
 
   if (pauseScreen === 'main') {
-    const items = [t('pauseResume'), t('pauseSettings'), t('pauseReturnMain')];
-    drawMenuList(items, pauseIndex, 160, 40);
+    const items = [t('pauseResume'), t('pauseSettings'), t('pauseHelp'), t('pauseReturnMain')];
+    drawMenuList(items, pauseIndex, 150, 38);
     ctx.font = '12px monospace';
     ctx.fillStyle = '#888';
     ctx.fillText('↑↓ / Enter / Esc(' + t('pauseResume') + ')', W/2, H - 16);
@@ -3723,6 +3757,8 @@ function setupTouchControls() {
   bindTouchButton(document.getElementById('tRight'), p => touchDpadPress('right', p));
   bindTouchButton(document.getElementById('tPunch'), p => touchActionPress('punch', p));
   bindTouchButton(document.getElementById('tKick'),  p => touchActionPress('kick', p));
+  bindTouchButton(document.getElementById('tJump'),  p => touchDpadPress('up', p));
+  bindTouchButton(document.getElementById('tParry'), p => { if (p && state === 'playing') tryParry(); });
   bindTouchButton(pauseBtn, p => {
     if (!p) return;
     initAudio();
