@@ -110,13 +110,15 @@
     <span class="key">S</span> 蹲下　
     <span class="key">J</span> 揮拳(長按蓄力放波動拳)　
     <span class="key">K</span> 踢腿　
-    <span class="key">Enter</span> 開始
+    <span class="key">L</span> 格擋　
+    <span class="key">Esc</span>/<span class="key">P</span> 暫停
   </span>
   <span id="hintGamepad" style="display:none;">
     🎮 <span class="key">方向鍵/左搖桿</span> 移動　
     <span class="key">X</span> 揮拳(長按蓄力放波動拳)　
     <span class="key">A</span> 踢腿　
-    <span class="key">Start</span> 開始
+    <span class="key">Y</span> 格擋　
+    <span class="key">Start</span> 暫停
   </span>
 </div>
 
@@ -983,7 +985,7 @@ const SETTINGS_STORAGE_KEY = 'kungfuFistSettings';
 function saveSettings() {
   try {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
-      musicVolume, sfxVolume, currentLang, controlModeOverride, displayScale,
+      musicVolume, sfxVolume, currentLang, controlModeOverride, displayScale, keyBindings, gamepadBindings,
     }));
   } catch (e) { /* localStorageが使えない環境では何もしない */ }
 }
@@ -1138,6 +1140,22 @@ function loadSettings() {
     if (['zh','ja','en'].includes(saved.currentLang)) currentLang = saved.currentLang;
     if (['auto','keyboard','gamepad'].includes(saved.controlModeOverride)) controlModeOverride = saved.controlModeOverride;
     if ([1,2,3].includes(saved.displayScale)) displayScale = saved.displayScale;
+    if (saved.keyBindings && typeof saved.keyBindings === 'object') {
+      const validCodes = v => typeof v === 'string' && /^[A-Za-z0-9]+$/.test(v);
+      const merged = Object.assign({}, DEFAULT_KEY_BINDINGS);
+      Object.keys(DEFAULT_KEY_BINDINGS).forEach(k => {
+        if (validCodes(saved.keyBindings[k])) merged[k] = saved.keyBindings[k];
+      });
+      keyBindings = merged;
+      rebuildKeyAliasMap();
+    }
+    if (saved.gamepadBindings && typeof saved.gamepadBindings === 'object') {
+      const mergedGp = Object.assign({}, DEFAULT_GAMEPAD_BINDINGS);
+      Object.keys(DEFAULT_GAMEPAD_BINDINGS).forEach(k => {
+        if (typeof saved.gamepadBindings[k] === 'number' && saved.gamepadBindings[k] >= 0) mergedGp[k] = saved.gamepadBindings[k];
+      });
+      gamepadBindings = mergedGp;
+    }
   } catch (e) { /* 保存データが壊れている等の場合は初期値のまま使う */ }
 }
 
@@ -1149,15 +1167,83 @@ const keys = {};
 // 既存のゲームロジック(プレイヤー移動・攻撃判定など)を変更せずに済ませている。
 // なお、Arrow系キーはメニュー/PAUSE画面のカーソル操作用として引き続き機能する
 // (そちらはkeys{}を介さずe.codeを直接見ているため、ここで無効化してもメニュー操作には影響しない)。
-const GAMEPLAY_KEY_ALIAS = {
-  KeyW: 'ArrowUp',
-  Space: 'ArrowUp', // SPACEキーもWキーと同じくジャンプとして扱う
-  KeyA: 'ArrowLeft',
-  KeyS: 'ArrowDown',
-  KeyD: 'ArrowRight',
-  KeyJ: 'KeyZ',
-  KeyK: 'KeyX',
-};
+const DEFAULT_KEY_BINDINGS = { left: 'KeyA', right: 'KeyD', jump: 'KeyW', duck: 'KeyS', punch: 'KeyJ', kick: 'KeyK', parry: 'KeyL' };
+let keyBindings = Object.assign({}, DEFAULT_KEY_BINDINGS); // 玩家がカスタマイズ可能なキー配置(設定メニューの[控制]で変更・保存)
+const DEFAULT_GAMEPAD_BINDINGS = { punch: 2, kick: 0, parry: 3 }; // X, A, Y(標準ゲームパッド配列のボタン番号)
+let gamepadBindings = Object.assign({}, DEFAULT_GAMEPAD_BINDINGS); // 玩家がカスタマイズ可能なゲームパッドボタン配置
+let awaitingGamepadBind = null; // null | 'punch' | 'kick' | 'parry' (ゲームパッドのボタン再割当て待ち状態)
+let prevGamepadBtnSnapshot = []; // ボタン再割当て時に「新たに押されたボタン」を検出するための前フレーム状態
+function findConflictingGamepadAction(idx, currentAction) {
+  for (const action of ['punch', 'kick', 'parry']) {
+    if (action === currentAction) continue;
+    if (gamepadBindings[action] === idx) return action;
+  }
+  return null;
+}
+let GAMEPLAY_KEY_ALIAS = {};
+function rebuildKeyAliasMap() {
+  GAMEPLAY_KEY_ALIAS = {
+    Space: 'ArrowUp', // SPACEキーは常にジャンプの補助キーとして固定(カスタマイズ対象外)
+  };
+  GAMEPLAY_KEY_ALIAS[keyBindings.jump] = 'ArrowUp';
+  GAMEPLAY_KEY_ALIAS[keyBindings.left] = 'ArrowLeft';
+  GAMEPLAY_KEY_ALIAS[keyBindings.duck] = 'ArrowDown';
+  GAMEPLAY_KEY_ALIAS[keyBindings.right] = 'ArrowRight';
+  GAMEPLAY_KEY_ALIAS[keyBindings.punch] = 'KeyZ';
+  GAMEPLAY_KEY_ALIAS[keyBindings.kick] = 'KeyX';
+}
+rebuildKeyAliasMap();
+let awaitingKeyBind = null; // null | 'left' | 'right' | 'jump' | 'duck' | 'punch' | 'kick' | 'parry' (設定[控制]でのキー再割当て待ち状態)
+function startKeyCapture(action) {
+  awaitingKeyBind = action;
+  keyCaptureWarning = null;
+}
+function startGamepadCapture(action) {
+  awaitingGamepadBind = action;
+  keyCaptureWarning = null;
+  // 選択に使ったボタンがまだ押しっぱなしでも誤検出しないよう、現在の押下状態を基準値にしておく
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  const gp = gamepadIndex !== null ? pads[gamepadIndex] : null;
+  prevGamepadBtnSnapshot = gp ? Array.from(gp.buttons, b => isGamepadButtonPressed(b)) : [];
+}
+let keyCaptureWarning = null; // { action, timer } : 重複キー検出時に警告を表示するための状態
+const ACTION_LABEL_KEYS = { left: 'bindMove', right: 'bindMove', jump: 'helpJump', duck: 'helpDuck', punch: 'helpPunch', kick: 'helpKick', parry: 'helpParry' };
+// codeが既に別のアクションに割り当てられていないか調べる(移動の左右キー自身は互いに除外する)
+function findConflictingAction(code, currentAction) {
+  const exclude = (currentAction === 'left' || currentAction === 'right') ? ['left', 'right'] : [currentAction];
+  for (const action of ['left', 'right', 'jump', 'duck', 'punch', 'kick', 'parry']) {
+    if (exclude.includes(action)) continue;
+    if (keyBindings[action] === code) return action;
+  }
+  if (code === 'Space' && currentAction !== 'jump') return 'jump'; // SPACEは常にジャンプ専用の予約キー
+  return null;
+}
+function applyKeyCapture(code) {
+  if (!awaitingKeyBind) return;
+  const conflict = findConflictingAction(code, awaitingKeyBind);
+  if (conflict) {
+    keyCaptureWarning = { action: conflict, timer: 100 }; // 割り当てずに警告だけ出し、再入力を待つ
+    return;
+  }
+  keyCaptureWarning = null;
+  if (awaitingKeyBind === 'left') {
+    keyBindings.left = code;
+    rebuildKeyAliasMap();
+    saveSettings();
+    awaitingKeyBind = 'right'; // 移動キーは左に続けて右も受け付ける
+  } else if (awaitingKeyBind === 'right') {
+    keyBindings.right = code;
+    rebuildKeyAliasMap();
+    saveSettings();
+    awaitingKeyBind = null;
+  } else {
+    keyBindings[awaitingKeyBind] = code;
+    rebuildKeyAliasMap();
+    saveSettings();
+    awaitingKeyBind = null;
+  }
+  updateControlHintText();
+}
 const OLD_GAMEPLAY_CODES = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyZ', 'KeyX'];
 
 // タイトル/漫画/ゲームオーバー画面などで「決定」操作(Enterキー相当)が
@@ -1211,9 +1297,10 @@ function handlePrimaryPress(isEnterLike) {
 // ===== ゲームメニューの操作ロジック =====
 function menuItemCount() {
   if (menuScreen === 'main') return 6;
-  if (menuScreen === 'settings') return 4;
+  if (menuScreen === 'settings') return 5;
   if (menuScreen === 'language') return 3;
   if (menuScreen === 'difficulty') return 3;
+  if (menuScreen === 'controls') return gamepadConnected ? 4 : 7;
   return 0; // help/credits は一覧選択なし
 }
 function menuMove(dir) {
@@ -1268,6 +1355,26 @@ function menuConfirm() {
     playOpeningMusic();
   } else if (menuScreen === 'settings') {
     if (menuIndex === 2 || menuIndex === 3) menuAdjust(1); // 操作方法/畫面大小はEnterでも切り替え可能にする
+    else if (menuIndex === 4) { menuScreen = 'controls'; menuIndex = 0; }
+  } else if (menuScreen === 'controls') {
+    const resetIndex = gamepadConnected ? 3 : 6;
+    if (menuIndex === resetIndex) {
+      // [預設]:キーボード/ゲームパッドの全ボタンをデフォルトへ戻す
+      keyBindings = Object.assign({}, DEFAULT_KEY_BINDINGS);
+      gamepadBindings = Object.assign({}, DEFAULT_GAMEPAD_BINDINGS);
+      rebuildKeyAliasMap();
+      saveSettings();
+      updateControlHintText();
+      keyCaptureWarning = null;
+    } else if (gamepadConnected) {
+      // ゲームパッド接続中は揮拳/踢腿/格擋ボタンの再割当てのみ表示する
+      const gpOrder = ['punch', 'kick', 'parry'];
+      startGamepadCapture(gpOrder[menuIndex]);
+    } else {
+      const order = ['left', 'punch', 'jump', 'kick', 'duck', 'parry'];
+      // menuIndex 0 = 移動(left→rightの2キー分を連続で受け付ける)、1~5はそれぞれ単一キー
+      startKeyCapture(menuIndex === 0 ? 'left' : order[menuIndex]);
+    }
   } else if (menuScreen === 'language') {
     currentLang = ['zh','ja','en'][menuIndex];
     saveSettings();
@@ -1279,6 +1386,12 @@ function menuConfirm() {
   }
 }
 function menuBack() {
+  if (menuScreen === 'controls') {
+    // [控制]画面からは常に[設定]画面へ戻る(そこから先は設定側の戻り先ロジックに任せる)
+    menuScreen = 'settings';
+    menuIndex = 4;
+    return;
+  }
   if (menuReturnTo === 'paused') {
     // PAUSEメニューの[設定]/[操作説明]から開いた場合は、PAUSEメニューへ直接戻す
     const cameFromHelp = menuScreen === 'help';
@@ -1362,7 +1475,19 @@ function pauseBack() {
 }
 
 window.addEventListener('keydown', e => {
-  if (['KeyW','Space','KeyA','KeyS','KeyD','KeyJ','KeyK','Enter','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
+  if (awaitingKeyBind) {
+    e.preventDefault();
+    if (e.code === 'Escape') { awaitingKeyBind = null; keyCaptureWarning = null; }
+    else { applyKeyCapture(e.code); }
+    return;
+  }
+  if (awaitingGamepadBind && e.code === 'Escape') {
+    e.preventDefault();
+    awaitingGamepadBind = null;
+    keyCaptureWarning = null;
+    return;
+  }
+  if ([...Object.keys(GAMEPLAY_KEY_ALIAS), keyBindings.parry, 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
   if (GAMEPLAY_KEY_ALIAS[e.code]) {
     keys[GAMEPLAY_KEY_ALIAS[e.code]] = true;
   } else if (!OLD_GAMEPLAY_CODES.includes(e.code)) {
@@ -1373,7 +1498,7 @@ window.addEventListener('keydown', e => {
     enterPause();
     return;
   }
-  if (state === 'playing' && e.code === 'KeyL') {
+  if (state === 'playing' && e.code === keyBindings.parry) {
     initAudio();
     tryParry();
     return;
@@ -1465,25 +1590,38 @@ function updateControlHintText() {
   const kb = document.getElementById('hintKeyboard');
   const gp = document.getElementById('hintGamepad');
   if (!kb || !gp) return;
+  const L = c => keyLabelDisplay(c);
   kb.innerHTML =
-    '<span class="key">A</span><span class="key">D</span> ' + t('hintMove') + '　' +
-    '<span class="key">W</span>/<span class="key">SPACE</span> ' + t('hintJump') + '　' +
-    '<span class="key">S</span> ' + t('hintDuck') + '　' +
-    '<span class="key">J</span> ' + t('hintPunch') + '　' +
-    '<span class="key">K</span> ' + t('hintKick') + '　' +
-    '<span class="key">Enter</span> ' + t('hintStart');
+    '<span class="key">' + L(keyBindings.left) + '</span><span class="key">' + L(keyBindings.right) + '</span> ' + t('hintMove') + '　' +
+    '<span class="key">' + L(keyBindings.jump) + '</span>/<span class="key">SPACE</span> ' + t('hintJump') + '　' +
+    '<span class="key">' + L(keyBindings.duck) + '</span> ' + t('hintDuck') + '　' +
+    '<span class="key">' + L(keyBindings.punch) + '</span> ' + t('hintPunch') + '　' +
+    '<span class="key">' + L(keyBindings.kick) + '</span> ' + t('hintKick') + '　' +
+    '<span class="key">' + L(keyBindings.parry) + '</span> ' + t('hintParry') + '　' +
+    '<span class="key">Esc</span>/<span class="key">P</span> ' + t('hintPause');
   gp.innerHTML =
     '🎮 <span class="key">' + t('hintStick') + '</span> ' + t('hintMove') + '　' +
-    '<span class="key">X</span> ' + t('hintPunch') + '　' +
-    '<span class="key">A</span> ' + t('hintKick') + '　' +
-    '<span class="key">Start</span> ' + t('hintStart');
+    '<span class="key">' + gamepadBtnLabel('punch') + '</span> ' + t('hintPunch') + '　' +
+    '<span class="key">' + gamepadBtnLabel('kick') + '</span> ' + t('hintKick') + '　' +
+    '<span class="key">' + gamepadBtnLabel('parry') + '</span> ' + t('hintParry') + '　' +
+    '<span class="key">' + (gamepadIsPlayStation ? 'OPTIONS' : 'Start') + '</span> ' + t('hintPause');
 }
 
+// PS4/PS5のDualShock/DualSenseコントローラーを識別し、ボタン表記を✕○□△に切り替えるための判定
+let gamepadIsPlayStation = false;
+function detectPlayStationController(id) {
+  if (!id) return false;
+  const s = id.toLowerCase();
+  return s.includes('054c') || s.includes('dualsense') || s.includes('dualshock') ||
+    s.includes('playstation') || s.includes('sony') || s.includes('wireless controller');
+}
 window.addEventListener('gamepadconnected', e => {
   gamepadIndex = e.gamepad.index;
   gamepadConnected = true;
   gamepadConfirmHeld = false;
+  gamepadIsPlayStation = detectPlayStationController(e.gamepad.id);
   updateGamepadHintUI();
+  updateControlHintText();
 });
 window.addEventListener('gamepaddisconnected', e => {
   if (gamepadIndex === e.gamepad.index) {
@@ -1527,6 +1665,29 @@ function pollGamepad() {
 
   initAudio();
 
+  // 設定[控制]でゲームパッドのボタンを再割当て中は、新しく押されたボタンを検出して確定させる
+  if (awaitingGamepadBind) {
+    for (let i = 0; i < gp.buttons.length; i++) {
+      const pressed = isGamepadButtonPressed(gp.buttons[i]);
+      if (pressed && !prevGamepadBtnSnapshot[i]) {
+        const conflict = findConflictingGamepadAction(i, awaitingGamepadBind);
+        if (conflict) {
+          keyCaptureWarning = { action: conflict, timer: 100 };
+        } else {
+          gamepadBindings[awaitingGamepadBind] = i;
+          saveSettings();
+          updateControlHintText();
+          keyCaptureWarning = null;
+        }
+        awaitingGamepadBind = null;
+        break;
+      }
+    }
+    prevGamepadBtnSnapshot = Array.from(gp.buttons, b => isGamepadButtonPressed(b));
+    return;
+  }
+  prevGamepadBtnSnapshot = Array.from(gp.buttons, b => isGamepadButtonPressed(b));
+
   if (state === 'start' && prevPollState !== 'start') {
     // メニュー等の他画面からタイトルへ戻った直後は、その場面遷移に使ったボタンが
     // まだ物理的に押しっぱなしの可能性があるため、「press any key」が誤って
@@ -1547,12 +1708,13 @@ function pollGamepad() {
   keys['ArrowUp']    = dpadUp    || axLY < -GAMEPAD_DEADZONE;
   keys['ArrowDown']  = dpadDown  || axLY >  GAMEPAD_DEADZONE;
 
-  const btnA = isGamepadButtonPressed(gp.buttons[0]); // 踢腿
-  const btnB = isGamepadButtonPressed(gp.buttons[1]); // 踢腿(予備)
-  const btnX = isGamepadButtonPressed(gp.buttons[2]); // 揮拳
-  const btnY = isGamepadButtonPressed(gp.buttons[3]); // 揮拳(予備)
-  keys['KeyZ'] = btnX; // Yボタンは格擋専用にするため、揮拳の予備割り当てからは外す
-  keys['KeyX'] = btnA || btnB;
+  const btnA = isGamepadButtonPressed(gp.buttons[0]); // メニュー確定用(固定、カスタマイズ対象外)
+  const btnB = isGamepadButtonPressed(gp.buttons[1]); // メニュー取消用(固定、カスタマイズ対象外)
+  const btnPunch = isGamepadButtonPressed(gp.buttons[gamepadBindings.punch]);
+  const btnKick = isGamepadButtonPressed(gp.buttons[gamepadBindings.kick]);
+  const btnParryBtn = isGamepadButtonPressed(gp.buttons[gamepadBindings.parry]);
+  keys['KeyZ'] = btnPunch;
+  keys['KeyX'] = btnKick;
 
   // メニュー操作は方向キーだけでなく左アナログスティックの傾きにも対応させる
   const navUp    = dpadUp    || axLY < -GAMEPAD_DEADZONE;
@@ -1621,11 +1783,11 @@ function pollGamepad() {
   }
   prevStartBtn = startBtnPressed;
 
-  // プレイ中はYボタンで格擋(パリィ)を発動する(edge検出)
-  if (state === 'playing' && btnY && !prevParryBtn) {
+  // プレイ中はパリィ用に割り当てられたボタンで格擋(パリィ)を発動する(edge検出)
+  if (state === 'playing' && btnParryBtn && !prevParryBtn) {
     tryParry();
   }
-  prevParryBtn = btnY;
+  prevParryBtn = btnParryBtn;
 
   // 決定操作(A/B/X/Y/Start)はボタンごとに個別追跡せず、
   // 「どれか1つでも押されているか」という単一の状態としてまとめて立ち上がりを検出する。
@@ -1949,6 +2111,11 @@ const STR = {
     difficultyEasyDesc: '敵人較少較弱,時間較充裕', difficultyNormalDesc: '標準挑戰,敵人稍強、時間縮短',
     difficultyHardDesc: '敵人更多更強,BOSS更硬,殘機較少',
     settingsTitle: '設定', settingsMusic: '音樂', settingsSfx: '音效', settingsControl: '操作', settingsScale: '畫面大小',
+    settingsKeyBind: '控制', bindMove: '移動', bindReset: '預設',
+    bindHint: '選擇項目後按下新按鍵即可替換,方向鍵/Enter/Esc除外',
+    bindMoveLeft: '向左移動', bindMoveRight: '向右移動',
+    bindWaiting: '請按下[%s]的新按鍵...(Esc取消)', bindCancelHint: '按Esc取消變更', bindConflict: '此按鍵已被[%s]使用,請換一個',
+    bindKeyboardSection: '鍵盤', bindGamepadSection: '手把(按鈕編號)',
     controlAuto: '自動偵測', controlKeyboard: '鍵盤', controlGamepad: '控制器',
     back: '返回上一頁', navHint: '↑↓選擇　←→調整　Enter確定　Esc/B返回',
     helpTitle: '操作說明',
@@ -1961,7 +2128,7 @@ const STR = {
     helpParry: '招架', helpParryDesc: '在敵人攻擊命中前按下,可擊退小兵並反彈BOSS火球',
     langTitle: '選擇語言',
     langZh: '中文', langJa: '日文', langEn: '英文',
-    creditTitle: 'CREDIT', creditPlan: '企劃', creditAI: 'AI工具',
+    creditTitle: 'CREDIT', creditPlan: '企劃', creditAI: '程式',
     creditArt: '美術', creditMusic: '音樂', creditThanks: '特別感謝',
     hpLabel: 'HP', scoreLabel: 'SCORE', chargeLabel: '氣', bossLabel: 'MASTER',
     gameOver: 'GAME OVER', stageClear: 'STAGE CLEAR!', retry: '重新挑戰',
@@ -1971,7 +2138,7 @@ const STR = {
     retryPrompt: '按%s重新挑戰', continuePrompt: '按%s繼續', startBattlePrompt: '按%s開始戰鬥', startPrompt: '按%s開始',
     pauseTitle: 'PAUSE', pauseResume: '繼續遊戲', pauseSettings: '設定', pauseHelp: '操作說明', pauseReturnMain: '返回主選單',
     confirmReturnText: '確定返回?', confirmYes: '是', confirmNo: '否',
-    hintMove: '移動', hintJump: '跳躍', hintDuck: '蹲下', hintPunch: '揮拳(長按蓄力放波動拳)', hintKick: '踢腿', hintStart: '開始', hintStick: '方向鍵/左搖桿',
+    hintMove: '移動', hintJump: '跳躍', hintDuck: '蹲下', hintPunch: '揮拳(長按蓄力放波動拳)', hintKick: '踢腿', hintStart: '開始', hintParry: '格擋', hintPause: '暫停', hintStick: '方向鍵/左搖桿',
     pressAnyKey: '請按任意鍵',
   },
   ja: {
@@ -1982,6 +2149,11 @@ const STR = {
     difficultyEasyDesc: '敵が少なく弱め、時間に余裕あり', difficultyNormalDesc: '標準的な難易度、敵がやや強く時間短め',
     difficultyHardDesc: '敵が多く強力、BOSSも強化、残機が少ない',
     settingsTitle: '設定', settingsMusic: '音楽', settingsSfx: '効果音', settingsControl: '操作方法', settingsScale: '画面サイズ',
+    settingsKeyBind: 'キー設定', bindMove: '移動', bindReset: 'デフォルト',
+    bindHint: '項目を選んで新しいキーを押すと変更されます(方向キー/Enter/Esc除く)',
+    bindMoveLeft: '左移動', bindMoveRight: '右移動',
+    bindWaiting: '[%s]の新しいキーを押してください...(Escでキャンセル)', bindCancelHint: 'Escでキャンセル', bindConflict: 'このキーは既に[%s]で使用されています',
+    bindKeyboardSection: 'キーボード', bindGamepadSection: 'ゲームパッド(ボタン番号)',
     controlAuto: '自動検出', controlKeyboard: 'キーボード', controlGamepad: 'コントローラー',
     back: '戻る', navHint: '↑↓選択　←→調整　Enter決定　Esc/B戻る',
     helpTitle: '操作説明',
@@ -2004,7 +2176,7 @@ const STR = {
     retryPrompt: '%sでリトライ', continuePrompt: '%sで進む', startBattlePrompt: '%sで戦闘開始', startPrompt: '%sでスタート',
     pauseTitle: 'PAUSE', pauseResume: 'ゲームに戻る', pauseSettings: '設定', pauseHelp: '操作説明', pauseReturnMain: 'メインメニューへ戻る',
     confirmReturnText: '本当に戻りますか?', confirmYes: 'はい', confirmNo: 'いいえ',
-    hintMove: '移動', hintJump: 'ジャンプ', hintDuck: 'しゃがみ', hintPunch: 'パンチ(長押しで波動拳)', hintKick: 'キック', hintStart: 'スタート', hintStick: '方向キー/左スティック',
+    hintMove: '移動', hintJump: 'ジャンプ', hintDuck: 'しゃがみ', hintPunch: 'パンチ(長押しで波動拳)', hintKick: 'キック', hintStart: 'スタート', hintParry: 'パリィ', hintPause: 'ポーズ', hintStick: '方向キー/左スティック',
     pressAnyKey: 'どれかキーを押してください',
   },
   en: {
@@ -2015,6 +2187,11 @@ const STR = {
     difficultyEasyDesc: 'Fewer, weaker enemies and more time', difficultyNormalDesc: 'Standard challenge, tougher enemies, less time',
     difficultyHardDesc: 'More/tougher enemies, stronger boss, fewer lives',
     settingsTitle: 'Settings', settingsMusic: 'Music', settingsSfx: 'SFX', settingsControl: 'Controls', settingsScale: 'Screen Size',
+    settingsKeyBind: 'Controls', bindMove: 'Move', bindReset: 'Default',
+    bindHint: 'Select an item and press a new key to rebind (arrow keys/Enter/Esc excluded)',
+    bindMoveLeft: 'Move Left', bindMoveRight: 'Move Right',
+    bindWaiting: 'Press a new key for [%s]...(Esc to cancel)', bindCancelHint: 'Press Esc to cancel', bindConflict: 'This key is already used by [%s]',
+    bindKeyboardSection: 'Keyboard', bindGamepadSection: 'Gamepad (button #)',
     controlAuto: 'Auto-detect', controlKeyboard: 'Keyboard', controlGamepad: 'Gamepad',
     back: 'Back', navHint: 'Up/Down: Select  Left/Right: Adjust  Enter: OK  Esc/B: Back',
     helpTitle: 'How to Play',
@@ -2037,7 +2214,7 @@ const STR = {
     retryPrompt: 'Press %s to retry', continuePrompt: 'Press %s to continue', startBattlePrompt: 'Press %s to start battle', startPrompt: 'Press %s to start',
     pauseTitle: 'PAUSE', pauseResume: 'Resume', pauseSettings: 'Settings', pauseHelp: 'How to Play', pauseReturnMain: 'Return to Main Menu',
     confirmReturnText: 'Return to main menu?', confirmYes: 'Yes', confirmNo: 'No',
-    hintMove: 'Move', hintJump: 'Jump', hintDuck: 'Duck', hintPunch: 'Punch (hold to charge Hadouken)', hintKick: 'Kick', hintStart: 'Start', hintStick: 'D-Pad/Left Stick',
+    hintMove: 'Move', hintJump: 'Jump', hintDuck: 'Duck', hintPunch: 'Punch (hold to charge Hadouken)', hintKick: 'Kick', hintStart: 'Start', hintParry: 'Parry', hintPause: 'Pause', hintStick: 'D-Pad/Left Stick',
     pressAnyKey: 'Press any key',
   },
 };
@@ -2153,7 +2330,7 @@ function spawnEnemy(x, type) {
     state:'approach', attackTimer:0, hitCooldown:0, walkFrame:0, dead:false, deathTimer:0 });
 }
 function spawnBoss(x) {
-  const bossHp = Math.round(150 * diffSettings().bossHpMul);
+  const bossHp = Math.round(230 * diffSettings().bossHpMul); // 体力を底上げ(以前より倒れにくく)
   boss = { x, y:0, w:60, h:84, hp:bossHp, maxHp:bossHp, vx:0, facing:-1, state:'approach',
     attackTimer:0, hitCooldown:0, walkFrame:0, dead:false, deathTimer:0,
     specialTimer:0, specialCooldown:180, specialHit:false, specialShotsTotal:1 };
@@ -2208,7 +2385,8 @@ function updateBossFireballs() {
     if (!fb.reflected) {
       // 格擋(パリィ)判定:成功時は火球をBOSS方向へ反射する(しゃがみ調整なしの通常判定で受け付ける)
       const parryBox = { x: player.x, y: GROUND_Y + player.y - player.h, w: player.w, h: player.h };
-      if (!fb.hit && player.parryTimer > 0 && rectsOverlap(fb, parryBox)) {
+      const facingFireball = (fb.x >= player.x && player.facing === 1) || (fb.x < player.x && player.facing === -1);
+      if (!fb.hit && player.parryTimer > 0 && facingFireball && rectsOverlap(fb, parryBox)) {
         fb.reflected = true;
         fb.vx = -fb.vx;
         fb.facing = -fb.facing;
@@ -2232,7 +2410,7 @@ function updateBossFireballs() {
         sfx.bossHit();
         fb.hit = true;
         if (boss.hp <= 0) {
-          boss.dead = true; boss.deathTimer = 0; score += 1000;
+          boss.dead = true; boss.deathTimer = 0; score += 1500; // パリィで反射した火球によるトドメは通常撃破(1000)の1.5倍
           playBossDeadSfx();
           spawnMangaText('轟!!', boss.x+boss.w/2, GROUND_Y-boss.h-45, true);
         }
@@ -2508,13 +2686,14 @@ function update() {
         const reach = 20; // 実際に拳/脚が届く範囲に合わせた近接判定(体格に対して過大だった距離判定を修正)
         const enAtkBox = { x: en.facing===1 ? en.x+en.w : en.x-reach, y: GROUND_Y-en.h+15, w: reach, h: 40 };
         const pBox = { x: player.x, y: GROUND_Y-player.h+15, w: player.w, h: 40 };
-        if (rectsOverlap(enAtkBox, pBox) && player.parryTimer > 0 && !en.dead) {
+        const facingEnemy = (en.x >= player.x && player.facing === 1) || (en.x < player.x && player.facing === -1);
+        if (rectsOverlap(enAtkBox, pBox) && player.parryTimer > 0 && facingEnemy && !en.dead) {
           // 格擋成功:まず被弾リアクションを見せてから吹き飛ばし、最後に死亡させる
           en.hp = 0;
           en.parried = true;
           en.hitCooldown = 20; // 被弾ポーズ+吹き飛び演出の時間
           en.knockbackVx = en.facing * -14; // 吹き飛ぶ距離を2倍に強化
-          score += 200; enemiesDefeated++; // 格擋成功は通常撃破の1倍(2倍)のスコアを獲得
+          score += 150; enemiesDefeated++; // 格擋成功は通常撃破(100)の1.5倍のスコアを獲得
           spawnParrySuccessFx(player.x + player.w/2, GROUND_Y - player.h/2);
         } else if (rectsOverlap(enAtkBox, pBox) && player.invuln<=0 && !player.dead) {
           player.hp -= Math.round(5 * diffSettings().enemyDmgMul); player.invuln = 40; player.hitStun = 14; sfx.hit();
@@ -2543,7 +2722,9 @@ function update() {
       }
     }
   });
-  enemies = enemies.filter(en => !(en.dead && en.deathTimer > 30));
+  // 死亡して演出が終わった敵に加え、追いつけず画面外はるか後方に置き去りにされた敵も
+// 削除する(そのままだと同時出現数の上限を占有し続け、前方に新しい敵が出てこなくなるため)
+  enemies = enemies.filter(en => !(en.dead && en.deathTimer > 30) && !(!en.dead && en.x < camX - 200));
 
   updateHadoukens();
   updateImpactFlashes();
@@ -2635,6 +2816,7 @@ function update() {
         // 強制的に立ち状態へ戻してからエンディング演出の歩行に移らせる(空中で固まる不具合を防止)
         player.y = 0; player.vy = 0; player.onGround = true; player.ducking = false;
         player.attackType = null; player.attackTimer = 0; player.hitStun = 0; player.pendingDeath = false;
+        player.parryTimer = 0; player.parryCooldown = 0; // パリィ硬直のまま演出に入って姿勢が固まるのを防ぐ
         player.chargeTimer = 0; player.fullChargeFxDone = false; stopHadoHold();
       }
     }
@@ -3793,6 +3975,7 @@ function drawMenu() {
   if (menuScreen === 'main') drawMenuMain();
   else if (menuScreen === 'difficulty') drawMenuDifficulty();
   else if (menuScreen === 'settings') drawMenuSettings();
+  else if (menuScreen === 'controls') drawMenuControls();
   else if (menuScreen === 'help') drawMenuHelp();
   else if (menuScreen === 'language') drawMenuLanguage();
   else if (menuScreen === 'credits') drawMenuCredits();
@@ -3822,6 +4005,7 @@ function drawMenuSettings() {
     { label: t('settingsSfx') },
     { label: t('settingsControl') },
     { label: t('settingsScale') },
+    { label: t('settingsKeyBind') },
   ];
   const startY = 110, lineH = 50, labelX = 130, barX = 280, barW = 220;
   rows.forEach((row, i) => {
@@ -3846,6 +4030,98 @@ function drawMenuSettings() {
   });
   drawMenuNavHint();
 }
+// ===== [控制]画面:プレイキーのカスタム割り当て =====
+function drawMenuControls() {
+  drawMenuTitle(t('settingsKeyBind'));
+  ctx.textAlign = 'left';
+  const showGamepadRows = gamepadConnected;
+  const kbRows = [
+    { label: t('bindMove'), display: keyLabelDisplay(keyBindings.left) + '/' + keyLabelDisplay(keyBindings.right) },
+    { label: t('helpPunch'), display: keyLabelDisplay(keyBindings.punch) },
+    { label: t('helpJump'), display: keyLabelDisplay(keyBindings.jump) },
+    { label: t('helpKick'), display: keyLabelDisplay(keyBindings.kick) },
+    { label: t('helpDuck'), display: keyLabelDisplay(keyBindings.duck) },
+    { label: t('helpParry'), display: keyLabelDisplay(keyBindings.parry) },
+  ];
+  const gpRows = [
+    { label: t('helpPunch'), display: gamepadBtnLabel('punch') },
+    { label: t('helpKick'), display: gamepadBtnLabel('kick') },
+    { label: t('helpParry'), display: gamepadBtnLabel('parry') },
+  ];
+  const rows = showGamepadRows ? gpRows : kbRows;
+  const resetIndex = rows.length;
+  const labelX = 90, keyX = 340, lineH = 24;
+  let y = 80;
+  ctx.font = 'bold 13px monospace';
+  ctx.fillStyle = '#4fd8ff';
+  ctx.fillText(showGamepadRows ? ('\ud83c\udfae ' + t('bindGamepadSection')) : ('\u2328 ' + t('bindKeyboardSection')), labelX, y);
+  y += lineH + 8;
+  rows.forEach((row, i) => {
+    const selected = i === menuIndex;
+    ctx.font = selected ? 'bold 15px monospace' : '14px monospace';
+    ctx.fillStyle = selected ? '#ffdd33' : '#ddd';
+    ctx.fillText((selected ? '\u25b6 ' : '   ') + row.label, labelX, y);
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = '#4fd8ff';
+    ctx.fillText(row.display, keyX, y);
+    y += lineH;
+  });
+  y += 12;
+  const resetSelected = menuIndex === resetIndex;
+  ctx.font = resetSelected ? 'bold 15px monospace' : '14px monospace';
+  ctx.fillStyle = resetSelected ? '#ffdd33' : '#ddd';
+  ctx.fillText((resetSelected ? '\u25b6 ' : '   ') + t('bindReset'), labelX, y);
+
+  ctx.textAlign = 'center';
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#888';
+  ctx.fillText(t('bindHint'), W/2, H - 30);
+  ctx.fillText('Enter / Esc: ' + t('back'), W/2, H - 14);
+
+  if (awaitingKeyBind || awaitingGamepadBind) {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = '#ffdd33';
+    const action = awaitingKeyBind || awaitingGamepadBind;
+    const promptLabel = action === 'left' ? t('bindMoveLeft')
+      : action === 'right' ? t('bindMoveRight')
+      : t(ACTION_LABEL_KEYS[action]);
+    ctx.fillText(tf('bindWaiting', promptLabel), W/2, H/2 - 10);
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(t('bindCancelHint'), W/2, H/2 + 20);
+    if (keyCaptureWarning) {
+      ctx.font = 'bold 13px monospace';
+      ctx.fillStyle = '#ff5555';
+      ctx.fillText(tf('bindConflict', t(ACTION_LABEL_KEYS[keyCaptureWarning.action])), W/2, H/2 + 48);
+      keyCaptureWarning.timer--;
+      if (keyCaptureWarning.timer <= 0) keyCaptureWarning = null;
+    }
+  }
+}
+// キーコード(例: 'KeyJ','Space','ArrowLeft')を画面表示用の短い文字列に変換する
+
+function keyLabelDisplay(code) {
+  if (!code) return '?';
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code === 'Space') return 'SPACE';
+  if (code.startsWith('Arrow')) return code.slice(5).toUpperCase();
+  return code;
+}
+// ゲームパッドのボタン表示ラベル:デフォルトのままなら見慣れた記号(X/A/Y or □/✕/△)、
+// カスタマイズ済みならボタン番号(#N)で表示する
+function gamepadBtnLabel(action) {
+  const idx = gamepadBindings[action];
+  if (idx === DEFAULT_GAMEPAD_BINDINGS[action]) {
+    if (action === 'punch') return gamepadIsPlayStation ? '□' : 'X';
+    if (action === 'kick') return gamepadIsPlayStation ? '✕' : 'A';
+    if (action === 'parry') return gamepadIsPlayStation ? '△' : 'Y';
+  }
+  return '#' + idx;
+}
 function drawMenuHelpRow(img, label, desc, keyLabel, y) {
   const iconH = 56;
   if (img && img.complete && img.naturalWidth) {
@@ -3862,14 +4138,18 @@ function drawMenuHelpRow(img, label, desc, keyLabel, y) {
 }
 function drawMenuHelp() {
   drawMenuTitle(t('helpTitle'));
+  const gpPunch = gamepadBtnLabel('punch');
+  const gpKick = gamepadBtnLabel('kick');
+  const gpParry = gamepadBtnLabel('parry');
+  const K = c => keyLabelDisplay(c);
   const rows = [
-    { img: spriteWalk1, label: t('helpMove'), desc: t('helpMoveDesc'), key: 'A/D' },
-    { img: spriteJumpKick, label: t('helpJump'), desc: t('helpJumpDesc'), key: 'W/SPACE' },
-    { img: spriteDuckIdle, label: t('helpDuck'), desc: t('helpDuckDesc'), key: 'S' },
-    { img: spritePunchStand, label: t('helpPunch'), desc: t('helpPunchDesc'), key: 'J/X' },
-    { img: spriteKickOut, label: t('helpKick'), desc: t('helpKickDesc'), key: 'K/A' },
+    { img: spriteWalk1, label: t('helpMove'), desc: t('helpMoveDesc'), key: K(keyBindings.left) + '/' + K(keyBindings.right) },
+    { img: spriteJumpKick, label: t('helpJump'), desc: t('helpJumpDesc'), key: K(keyBindings.jump) + '/SPACE' },
+    { img: spriteDuckIdle, label: t('helpDuck'), desc: t('helpDuckDesc'), key: K(keyBindings.duck) },
+    { img: spritePunchStand, label: t('helpPunch'), desc: t('helpPunchDesc'), key: K(keyBindings.punch) + '/' + gpPunch },
+    { img: spriteKickOut, label: t('helpKick'), desc: t('helpKickDesc'), key: K(keyBindings.kick) + '/' + gpKick },
     { img: spriteHado1, label: t('helpCharge'), desc: t('helpChargeDesc'), key: t('helpChargeKey') },
-    { img: spriteParry, label: t('helpParry'), desc: t('helpParryDesc'), key: 'L/Y' },
+    { img: spriteParry, label: t('helpParry'), desc: t('helpParryDesc'), key: K(keyBindings.parry) + '/' + gpParry },
   ];
   const startY = 92, lineH = 38;
   rows.forEach((row, i) => drawMenuHelpRow(row.img, row.label, row.desc, row.key, startY + i*lineH));
@@ -3901,7 +4181,7 @@ function drawMenuCredits() {
   ctx.font = 'bold 16px monospace';
   ctx.fillStyle = '#fff';
   ctx.fillText(t('creditPlan') + ' : Arc Wang', W/2, 122);
-  ctx.fillText(t('creditAI') + ' : Claude', W/2, 154);
+  ctx.fillText(t('creditAI') + ' : Claude AI', W/2, 154);
   ctx.fillText(t('creditArt') + ' : AI', W/2, 186);
   ctx.fillText(t('creditMusic') + ' : AI', W/2, 218);
   ctx.font = 'bold 14px monospace';
