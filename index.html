@@ -18,6 +18,7 @@
     min-height: 100vh;
     font-family: 'Courier New', monospace;
     color: #fff;
+    touch-action: manipulation; /* 連続タップによるダブルタップズームを防止 */
   }
   #gameWrap {
     position: relative;
@@ -1174,6 +1175,37 @@ function proceedToNameEntry(source) {
   nameEntryChars = ['', '', '', ''];
   nameEntryIndex = 0;
 }
+const NAME_ENTRY_SLOTS = 4;
+const NAME_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; // ゲームパッドの上下キーで巡回選択する文字セット(A始まり)
+// ゲームパッド用:上下キーで現在の枠の文字を巡回選択する(未選択なら'0'から開始)
+function cycleNameEntryChar(dir) {
+  const cur = nameEntryChars[nameEntryIndex];
+  let idx = cur ? NAME_CHARSET.indexOf(cur) : -1;
+  idx = (idx + dir + NAME_CHARSET.length) % NAME_CHARSET.length;
+  nameEntryChars[nameEntryIndex] = NAME_CHARSET[idx];
+  playMenuMoveSfx();
+}
+// 1つの文字枠を確定して次へ進める:未入力なら「-」で確定する。最後の枠(4文字目)が
+// 確定したら、そこで初めて名前を送信する。
+function confirmNameEntrySlot() {
+  if (!nameEntryChars[nameEntryIndex]) nameEntryChars[nameEntryIndex] = ' ';
+  if (nameEntryIndex < NAME_ENTRY_SLOTS - 1) {
+    nameEntryIndex++;
+    playMenuMoveSfx();
+  } else {
+    submitNameEntry();
+  }
+}
+// 1つ前の文字枠へ戻る(現在の枠に入力済みならまずそれだけ消し、空欄ならひとつ前の枠へ戻って消す)
+function nameEntryStepBack() {
+  if (nameEntryChars[nameEntryIndex]) {
+    nameEntryChars[nameEntryIndex] = '';
+  } else if (nameEntryIndex > 0) {
+    nameEntryIndex--;
+    nameEntryChars[nameEntryIndex] = '';
+  }
+  playMenuMoveSfx();
+}
 
 async function submitNameEntry() {
   const name = nameEntryChars.join('');
@@ -1674,15 +1706,14 @@ window.addEventListener('keydown', e => {
   }
   if (state === 'nameEntry') {
     initAudio();
-    if (e.code === 'Enter' || e.code === 'Escape') { submitNameEntry(); return; }
-    if (e.code === 'Backspace') {
-      if (nameEntryChars[nameEntryIndex]) nameEntryChars[nameEntryIndex] = '';
-      else if (nameEntryIndex > 0) { nameEntryIndex--; nameEntryChars[nameEntryIndex] = ''; }
-      return;
-    }
+    if (e.code === 'Enter' || e.code === 'Escape') { confirmNameEntrySlot(); return; }
+    if (e.code === 'Backspace') { nameEntryStepBack(); return; }
     if (/^Key[A-Z]$/.test(e.code) && nameEntryIndex < 4) {
       nameEntryChars[nameEntryIndex] = e.code.slice(3);
-      if (nameEntryIndex < 3) nameEntryIndex++;
+      return;
+    }
+    if (/^Digit[0-9]$/.test(e.code) && nameEntryIndex < 4) {
+      nameEntryChars[nameEntryIndex] = e.code.slice(5);
       return;
     }
     return;
@@ -1945,11 +1976,16 @@ function pollGamepad() {
       if (navUp && !prevDpadMenu.up) leaderboardSwitchPage(-1);
       if (navDown && !prevDpadMenu.down) leaderboardSwitchPage(1);
       prevDpadMenu = { up: navUp, down: navDown, left: navLeft, right: navRight };
+    } else if (state === 'nameEntry') {
+      // ゲームパッドでは上下キー/スティックで文字を切り替えて選ぶ(0-9→A-Zの順に循環)
+      if (navUp && !prevDpadMenu.up) cycleNameEntryChar(1);
+      if (navDown && !prevDpadMenu.down) cycleNameEntryChar(-1);
+      prevDpadMenu = { up: navUp, down: navDown, left: navLeft, right: navRight };
     }
-    // ゲームパッドでは文字入力はできないため、Aボタンで空欄のまま送信/次へ進める
-    if (btnA && !prevMenuConfirm) { if (state === 'nameEntry') submitNameEntry(); else leaderboardConfirm(); }
+    // ゲームパッドはAボタンで確定/次へ、Bボタンで一つ戻る
+    if (btnA && !prevMenuConfirm) { if (state === 'nameEntry') confirmNameEntrySlot(); else leaderboardConfirm(); }
     prevMenuConfirm = btnA;
-    if (btnB && !prevMenuBack) { if (state === 'nameEntry') submitNameEntry(); else leaderboardBack(); }
+    if (btnB && !prevMenuBack) { if (state === 'nameEntry') nameEntryStepBack(); else leaderboardBack(); }
     prevMenuBack = btnB;
     return;
   }
@@ -2300,7 +2336,8 @@ const STR = {
   zh: {
     menuStart: '開始遊戲', menuSettings: '設定', menuHelp: '操作說明', menuLang: '語言', menuLeaderboard: '排行榜', menuCredit: 'CREDIT', menuHistory: '了解歷史', historyScrollHint: '捲動',
     historyArticleTimeline: '橫捲軸遊戲發展史', historyArticleConcept: '概念與結構組成', historyArticleAbout: '關於Arc概遊庫',
-    nameEntryTitle: '姓名', nameEntryHint1: '按字母鍵輸入(最多4個字元)', nameEntryHint2: 'Enter確定(留空亦可送出)',
+    nameEntryTitle: '姓名', nameEntryConfirmAgain: '請再按%s次確認送出',
+    nameEntryHint: '↑↓選字(手把)　Enter/A:確定此字(空白則為-)　Backspace/B:退回一格', nameEntryHint1: '按字母鍵輸入(最多4個字元)', nameEntryHint2: 'Enter確定(留空亦可送出)',
     leaderboardTitle: '排行榜', leaderboardEmpty: '尚無紀錄', leaderboardSwitch: '切換難度', leaderboardPageSwitch: '換頁', leaderboardLoading: '讀取中',
     difficultyTitle: '選擇難度',
     modeSelectTitle: '選擇模式', modeStory: '劇情模式', modeDojo: '武道模式',
@@ -2342,7 +2379,8 @@ const STR = {
   ja: {
     menuStart: 'ゲーム開始', menuSettings: '設定', menuHelp: '操作説明', menuLang: '言語', menuLeaderboard: 'ランキング', menuCredit: 'CREDIT', menuHistory: '歴史を知る', historyScrollHint: 'スクロール',
     historyArticleTimeline: '横スクロールゲームの歴史', historyArticleConcept: '概念と構成要素', historyArticleAbout: 'ARCの概遊庫について',
-    nameEntryTitle: '名前', nameEntryHint1: '文字キーで入力(最大4文字)', nameEntryHint2: 'Enterで決定(空欄のまま送信も可)',
+    nameEntryTitle: '名前', nameEntryConfirmAgain: 'あと%s回押すと送信されます',
+    nameEntryHint: '↑↓文字選択(パッド)　Enter/A:確定(空欄は-)　Backspace/B:戻る', nameEntryHint1: '文字キーで入力(最大4文字)', nameEntryHint2: 'Enterで決定(空欄のまま送信も可)',
     leaderboardTitle: 'ランキング', leaderboardEmpty: '記録はまだありません', leaderboardSwitch: '難易度切替', leaderboardPageSwitch: 'ページ切替', leaderboardLoading: '読み込み中',
     difficultyTitle: '難易度選択',
     modeSelectTitle: 'モード選択', modeStory: 'ストーリーモード', modeDojo: '道場モード',
@@ -2384,7 +2422,8 @@ const STR = {
   en: {
     menuStart: 'Start Game', menuSettings: 'Settings', menuHelp: 'How to Play', menuLang: 'Language', menuLeaderboard: 'Leaderboard', menuCredit: 'CREDIT', menuHistory: 'Learn about history', historyScrollHint: 'Scroll',
     historyArticleTimeline: 'History of Side-Scrollers', historyArticleConcept: 'Concepts & Structure', historyArticleAbout: "About Arc's Game Archive",
-    nameEntryTitle: 'Name', nameEntryHint1: 'Type letter keys (up to 4 chars)', nameEntryHint2: 'Enter to confirm (blank is OK too)',
+    nameEntryTitle: 'Name', nameEntryConfirmAgain: 'Press %s more time(s) to confirm',
+    nameEntryHint: 'Up/Down: pick letter (pad)   Enter/A: Confirm (blank = -)   Backspace/B: Go back', nameEntryHint1: 'Type letter keys (up to 4 chars)', nameEntryHint2: 'Enter to confirm (blank is OK too)',
     leaderboardTitle: 'Leaderboard', leaderboardEmpty: 'No records yet', leaderboardSwitch: 'Switch difficulty', leaderboardPageSwitch: 'Page', leaderboardLoading: 'Loading',
     difficultyTitle: 'Select Difficulty',
     modeSelectTitle: 'Select Mode', modeStory: 'Story Mode', modeDojo: 'Dojo Mode',
@@ -2553,7 +2592,7 @@ function onDojoEntranceSfxEnded() {
 
 // 武道場モード:時間切れまで生き残った場合はSTAGE CLEAR扱いにする(死亡演出を経ずに直接クリア画面へ)
 function triggerDojoStageClear() {
-  stopGameMusic(); stopBossMusic(); stopDojoMusic();
+  stopGameMusic(); stopBossMusic(); stopDojoMusic(); stopHadoHold();
   playStageClearMusic();
   state = 'stageclear';
 }
@@ -3224,7 +3263,7 @@ function update() {
     if (player.deathTimer > 60) {
       lives--;
       if (lives <= 0) {
-        stopGameMusic(); stopBossMusic(); stopDojoMusic(); hadoukens = []; playGameOverMusic();
+        stopGameMusic(); stopBossMusic(); stopDojoMusic(); stopHadoHold(); hadoukens = []; playGameOverMusic();
         state = 'gameover';
       }
       else { player.dead = false; player.hp = player.maxHp; player.invuln = 90; }
@@ -4393,7 +4432,7 @@ function drawMenuNavHint() {
   ctx.textAlign = 'center';
   ctx.font = '12px monospace';
   ctx.fillStyle = '#888';
-  ctx.fillText(t('navHint'), W/2, H - 16);
+  ctx.fillText(t('nameEntryHint'), W/2, H - 16);
 }
 function drawMenu() {
   drawMenuPanelBg();
@@ -5335,6 +5374,16 @@ function drawStageClearOverlay() {
 function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
 }
+// touch-action:manipulationだけでは一部の古いブラウザでダブルタップズームを防げないため、
+// 短時間に連続したtouchendが発生した場合はズームさせないよう念のため直接抑止する
+(function preventDoubleTapZoom() {
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 350) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+})();
 
 function touchDpadPress(dir, pressed) {
   if (state === 'menu') {
@@ -5384,7 +5433,7 @@ function touchActionPress(role, pressed) {
   }
   if (state === 'nameEntry') {
     if (!pressed) return;
-    submitNameEntry();
+    if (role === 'punch') confirmNameEntrySlot(); else nameEntryStepBack();
     return;
   }
   if (state === 'leaderboard') {
@@ -5395,6 +5444,12 @@ function touchActionPress(role, pressed) {
   if (state === 'gameover') {
     if (!pressed) return;
     proceedToNameEntry('gameover');
+    return;
+  }
+  if (state === 'stageclear') {
+    if (!pressed) return;
+    stopStageClearMusic();
+    proceedToNameEntry('stageclear');
     return;
   }
   if (state === 'postGameChoice') {
@@ -5432,6 +5487,7 @@ function setupVirtualStick() {
 
   function maxRadius() { return stick.getBoundingClientRect().width * 0.28; }
 
+  let stickPrevLeft = false, stickPrevRight = false, stickPrevDown = false; // 前回の方向状態(edge検出用)
   function updateDirection(dx, dy, radius) {
     const threshold = 0.35; // 中心からの距離がこの割合を超えたら方向入力とみなす
     const nx = dx / radius, ny = dy / radius;
@@ -5441,9 +5497,12 @@ function setupVirtualStick() {
       if (Math.abs(nx) > Math.abs(ny)) { if (nx > 0) right = true; else left = true; }
       else if (ny > 0) { down = true; } // 上方向はここでは無視する(ジャンプは専用ボタン)
     }
-    touchDpadPress('left', left);
-    touchDpadPress('right', right);
-    touchDpadPress('down', down);
+    // pointermoveは1秒間に何度も発火するため、状態が実際に変化した時だけtouchDpadPressを呼ぶ
+    // (メニュー画面などで押しっぱなし扱いになり、選択が異常な速さで進んでしまうのを防ぐ)
+    if (left !== stickPrevLeft) touchDpadPress('left', left);
+    if (right !== stickPrevRight) touchDpadPress('right', right);
+    if (down !== stickPrevDown) touchDpadPress('down', down);
+    stickPrevLeft = left; stickPrevRight = right; stickPrevDown = down;
   }
 
   function start(e) {
@@ -5474,6 +5533,7 @@ function setupVirtualStick() {
     touchDpadPress('left', false);
     touchDpadPress('right', false);
     touchDpadPress('down', false);
+    stickPrevLeft = false; stickPrevRight = false; stickPrevDown = false;
   }
   stick.addEventListener('pointerdown', start);
   stick.addEventListener('pointermove', move);
@@ -5516,14 +5576,8 @@ function setupTouchControls() {
     const factor = Math.min(1, availW / rect.width, availH / rect.height);
     gameWrap.style.transform = `scale(${factor})`;
     gameWrap.style.transformOrigin = 'top center';
-    // PAUSEボタンは実際に縮小表示されたゲーム画面の下(黒い余白部分)に配置し直し、
-    // ゲーム画面自体には重ならないようにする
-    const pauseBtn = document.getElementById('tPause');
-    if (pauseBtn) {
-      const scaledRect = gameWrap.getBoundingClientRect();
-      pauseBtn.style.top = (scaledRect.bottom + 10) + 'px';
-      pauseBtn.style.right = '4vw';
-    }
+    // PAUSEボタンは下部の仮想スティック/アクションボタン群と重なって押せなくなる不具合があったため、
+    // 画面下へ再配置するのをやめ、CSSで指定した画面右上に固定して常に確実に押せるようにする
   }
   fitMobileScreen();
   window.addEventListener('resize', fitMobileScreen);
