@@ -1058,6 +1058,11 @@ let leaderboardViewDiff = 'easy'; // 現在閲覧中/表示中の難易度タブ
 let leaderboardPage = 0; // 現在のページ(0~4、1ページ10件)
 let leaderboardLoading = false; // クラウドから取得中かどうか(読み込み中の表示切替用)
 let leaderboardInputUnlockTime = 0; // この時刻までは重新挑戰/返回主畫面の操作を受け付けない(誤連打防止)
+let gameOverStageClearInputUnlockTime = 0; // GAME OVER/STAGE CLEARジングルの再生が終わるまで操作を受け付けない
+function setPostGameInputUnlock(audio) {
+  const durMs = (audio && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration * 1000 : 4000;
+  gameOverStageClearInputUnlockTime = Date.now() + durMs;
+}
 let postGameChoiceIndex = 0; // 排行榜閲覧後の選択画面(0:重新挑戰 1:返回主畫面)
 function confirmPostGameChoice() {
   if (postGameChoiceIndex === 0) retryFromLeaderboard();
@@ -1412,6 +1417,7 @@ function handlePrimaryPress(isEnterLike) {
   initAudio();
   if (state === 'start' && !titleConfirming) playChinaMusic();
   if (state === 'stageclear') {
+    if (Date.now() < gameOverStageClearInputUnlockTime) return; // ジングル再生中は誤操作を防ぐ
     stopStageClearMusic();
     proceedToNameEntry('stageclear');
     return;
@@ -1732,6 +1738,7 @@ window.addEventListener('keydown', e => {
   }
   if (state === 'gameover') {
     initAudio();
+    if (Date.now() < gameOverStageClearInputUnlockTime) return; // ジングル再生中は誤操作を防ぐ
     proceedToNameEntry('gameover');
     return;
   }
@@ -1994,7 +2001,7 @@ function pollGamepad() {
 
   if (state === 'gameover') {
     initAudio();
-    if (btnA && !prevMenuConfirm) proceedToNameEntry('gameover');
+    if (btnA && !prevMenuConfirm && Date.now() >= gameOverStageClearInputUnlockTime) proceedToNameEntry('gameover');
     prevMenuConfirm = btnA;
     return;
   }
@@ -2596,6 +2603,7 @@ function onDojoEntranceSfxEnded() {
 function triggerDojoStageClear() {
   stopGameMusic(); stopBossMusic(); stopDojoMusic(); stopHadoHold();
   playStageClearMusic();
+  setPostGameInputUnlock(clearThemeAudio);
   state = 'stageclear';
 }
 
@@ -3266,6 +3274,7 @@ function update() {
       lives--;
       if (lives <= 0) {
         stopGameMusic(); stopBossMusic(); stopDojoMusic(); stopHadoHold(); hadoukens = []; playGameOverMusic();
+        setPostGameInputUnlock(gameOverThemeAudio);
         state = 'gameover';
       }
       else { player.dead = false; player.hp = player.maxHp; player.invuln = 90; }
@@ -3342,6 +3351,7 @@ function updateVictoryDemo() {
     // 6) 演出終了後にSTAGE CLEARへ
     if (demoPhaseTimer > 300) {
       stopFxEnding(); playStageClearMusic();
+      setPostGameInputUnlock(clearThemeAudio);
       state = 'stageclear';
     }
     return;
@@ -5318,7 +5328,9 @@ function drawGameOverScreen() {
 
   ctx.font = '12px monospace';
   ctx.fillStyle = '#888';
-  ctx.fillText(t('pressAnyKeyContinue'), W/2, H - 16);
+  if (Date.now() >= gameOverStageClearInputUnlockTime) {
+    ctx.fillText(t('pressAnyKeyContinue'), W/2, H - 16);
+  }
 }
 // 排行榜閲覧後に表示する選択画面(重新挑戰/返回主畫面)
 function drawPostGameChoice() {
@@ -5369,7 +5381,9 @@ function drawStageClearOverlay() {
   ctx.fillText('SCORE ' + score, W/2, H/2+15);
   ctx.fillStyle = frame % 40 < 20 ? '#fff' : '#888';
   ctx.font = '14px monospace';
-  ctx.fillText(t('pressAnyKeyContinue'), W/2, H/2+45);
+  if (Date.now() >= gameOverStageClearInputUnlockTime) {
+    ctx.fillText(t('pressAnyKeyContinue'), W/2, H/2+45);
+  }
 }
 
 // ================= モバイル用バーチャルボタン =================
@@ -5444,12 +5458,12 @@ function touchActionPress(role, pressed) {
     return;
   }
   if (state === 'gameover') {
-    if (!pressed) return;
+    if (!pressed || Date.now() < gameOverStageClearInputUnlockTime) return;
     proceedToNameEntry('gameover');
     return;
   }
   if (state === 'stageclear') {
-    if (!pressed) return;
+    if (!pressed || Date.now() < gameOverStageClearInputUnlockTime) return;
     stopStageClearMusic();
     proceedToNameEntry('stageclear');
     return;
