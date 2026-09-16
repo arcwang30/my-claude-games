@@ -3243,12 +3243,22 @@ function update() {
           boss.jumpAttackCooldown = (240 + Math.random()*180) * diffSettings().bossMoveCooldownMul; // 次の跳躍攻撃までの間隔
         }
       } else if (boss.state === 'spinAttack') {
-        // 旋轉攻撃:高速回転しながら突進し、命中した瞬間に斜め後方上空へ吹き飛ぶ。
+        // 旋轉攻撃:予備動作(原地回転→溜め静止)を経てから高速回転で突進し、命中した瞬間に斜め後方上空へ吹き飛ぶ。
         // 空中にいる間は回転を続け、着地した瞬間にだけ停止する。
         boss.spinAttackTimer++;
+        const WINDUP_SPIN_LEN = 60; // 原地で回転しながら予備動作(約1秒)
+        const WINDUP_PAUSE_LEN = 30; // 回転を止めて一瞬溜める(約0.5秒、発動を予告する)
+        const WINDUP_END = WINDUP_SPIN_LEN + WINDUP_PAUSE_LEN;
         const DASH_LEN = 32; // 突進(回転)時間
         if (!boss.spinAttackHit) {
-          if (boss.spinAttackTimer <= DASH_LEN) {
+          if (boss.spinAttackTimer <= WINDUP_SPIN_LEN) {
+            // 原地回転:まだ突進しない
+            boss.vx = 0;
+            boss.spinAngle += 0.7;
+          } else if (boss.spinAttackTimer <= WINDUP_END) {
+            // 回転を止めて一瞬静止(発動直前の溜め)
+            boss.vx = 0;
+          } else if (boss.spinAttackTimer <= WINDUP_END + DASH_LEN) {
             boss.vx = boss.facing * (boss.enraged ? 7.5 : 6);
             boss.spinAngle += 0.9; // 高速回転
             const reach = 26;
@@ -3290,7 +3300,7 @@ function update() {
           } else {
             // 空振りした場合は反動なしでそのまま止まって行動へ復帰する
             boss.vx = 0;
-            if (boss.spinAttackTimer > DASH_LEN + 10) {
+            if (boss.spinAttackTimer > WINDUP_END + DASH_LEN + 10) {
               boss.state = dist > 90 ? 'approach' : 'attack';
               boss.spinAttackTimer = 0;
               boss.spinAngle = 0;
@@ -3402,6 +3412,8 @@ function update() {
         }
       }
       boss.x += boss.vx;
+      // 予備動作の後退・各種突進/跳躍などで画面外まで出てしまわないよう、常に現在のカメラ範囲内に収める
+      boss.x = Math.max(camX + 10, Math.min(camX + W - boss.w - 10, boss.x));
       if (playerHitbox && boss.hitCooldown <= 0) {
         const bBox = { x: boss.x, y: GROUND_Y-boss.h+15, w: boss.w, h: 36 };
         if (rectsOverlap(playerHitbox, bBox)) {
