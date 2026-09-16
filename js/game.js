@@ -1412,6 +1412,7 @@ function menuConfirm() {
   } else if (menuScreen === 'history') {
     historyArticleIndex = menuIndex;
     historyScroll = 0;
+    aboutFanPageFocused = false;
     menuScreen = 'historyArticle';
   } else if (menuScreen === 'help' || menuScreen === 'credits') {
     stopCreditMusic();
@@ -1562,9 +1563,18 @@ window.addEventListener('keydown', e => {
   if (state === 'menu') {
     initAudio();
     if (menuScreen === 'historyArticle') {
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') historyScroll -= 60;
-      else if (e.code === 'ArrowDown' || e.code === 'KeyS') historyScroll += 60;
-      else if (e.code === 'Enter' || e.code === 'Escape' || e.code === 'Backspace') { menuScreen = 'history'; menuIndex = historyArticleIndex; }
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+        if (historyArticleIndex === 2 && historyScroll <= 0) aboutFanPageFocused = true;
+        else { aboutFanPageFocused = false; historyScroll -= 60; }
+      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        if (aboutFanPageFocused) aboutFanPageFocused = false;
+        else historyScroll += 60;
+      } else if (e.code === 'Enter') {
+        if (aboutFanPageFocused) window.open(FAN_PAGE_URL, '_blank', 'noopener,noreferrer');
+        else { menuScreen = 'history'; menuIndex = historyArticleIndex; }
+      } else if (e.code === 'Escape' || e.code === 'Backspace') {
+        menuScreen = 'history'; menuIndex = historyArticleIndex; aboutFanPageFocused = false;
+      }
       return;
     }
     if (e.code === 'ArrowUp' || e.code === 'KeyW') menuMove(-1);
@@ -1621,7 +1631,19 @@ window.addEventListener('keyup', e => {
   if (GAMEPLAY_KEY_ALIAS[e.code]) keys[GAMEPLAY_KEY_ALIAS[e.code]] = false;
   else if (!OLD_GAMEPLAY_CODES.includes(e.code)) keys[e.code] = false;
 });
-canvas.addEventListener('click', () => { if (!assetsReady()) return; initAudio(); if (state === 'start' && !titleConfirming) playChinaMusic(); });
+canvas.addEventListener('click', e => {
+  if (state === 'menu' && menuScreen === 'historyArticle' && historyArticleIndex === 2 && aboutFanPageBtn) {
+    const r = canvas.getBoundingClientRect();
+    const cx = (e.clientX - r.left) * (canvas.width / r.width);
+    const cy = (e.clientY - r.top) * (canvas.height / r.height);
+    const b = aboutFanPageBtn;
+    if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+      window.open(FAN_PAGE_URL, '_blank', 'noopener,noreferrer');
+      return;
+    }
+  }
+  if (!assetsReady()) return; initAudio(); if (state === 'start' && !titleConfirming) playChinaMusic();
+});
 function tryAutoStartMusic() {
   if (!assetsReady()) { setTimeout(tryAutoStartMusic, 200); return; } // 讀取完了まで再試行し続ける
   initAudio();
@@ -1807,10 +1829,21 @@ function pollGamepad() {
   if (state === 'menu') {
     initAudio();
     if (menuScreen === 'historyArticle') {
-      if (navUp && !prevDpadMenu.up) historyScroll -= 60;
-      if (navDown && !prevDpadMenu.down) historyScroll += 60;
+      if (navUp && !prevDpadMenu.up) {
+        if (historyArticleIndex === 2 && historyScroll <= 0) aboutFanPageFocused = true;
+        else { aboutFanPageFocused = false; historyScroll -= 60; }
+      }
+      if (navDown && !prevDpadMenu.down) {
+        if (aboutFanPageFocused) aboutFanPageFocused = false;
+        else historyScroll += 60;
+      }
       prevDpadMenu = { up: navUp, down: navDown, left: navLeft, right: navRight };
-      if ((btnA && !prevMenuConfirm) || (btnB && !prevMenuBack)) { menuScreen = 'history'; menuIndex = historyArticleIndex; }
+      if (btnA && !prevMenuConfirm) {
+        if (aboutFanPageFocused) window.open(FAN_PAGE_URL, '_blank', 'noopener,noreferrer');
+        else { menuScreen = 'history'; menuIndex = historyArticleIndex; }
+      } else if (btnB && !prevMenuBack) {
+        menuScreen = 'history'; menuIndex = historyArticleIndex; aboutFanPageFocused = false;
+      }
       prevMenuConfirm = btnA; prevMenuBack = btnB;
       return;
     }
@@ -2208,7 +2241,7 @@ let currentLang = 'zh';
 const STR = {
   zh: {
     menuStart: '開始遊戲', menuSettings: '設定', menuHelp: '操作說明', menuLang: '語言', menuLeaderboard: '排行榜', menuCredit: 'CREDIT', menuHistory: '了解歷史', historyScrollHint: '捲動',
-    historyArticleTimeline: '橫捲軸遊戲發展史', historyArticleConcept: '概念與結構組成', historyArticleAbout: '關於Arc概遊庫',
+    historyArticleTimeline: '橫捲軸遊戲發展史', historyArticleConcept: '概念與結構組成', historyArticleAbout: '關於Arc概遊庫', historyAboutFanPage: '前往粉絲團',
     nameEntryTitle: '姓名', nameEntryConfirmAgain: '請再按%s次確認送出',
     nameEntryHint: '↑↓選字(手把)　Enter/A:確定此字(空白則為-)　Backspace/B:退回一格', nameEntryHint1: '按字母鍵輸入(最多4個字元)', nameEntryHint2: 'Enter確定(留空亦可送出)',
     leaderboardTitle: '排行榜', leaderboardEmpty: '尚無紀錄', leaderboardSwitch: '切換難度', leaderboardPageSwitch: '換頁', leaderboardLoading: '讀取中',
@@ -2251,7 +2284,7 @@ const STR = {
   },
   ja: {
     menuStart: 'ゲーム開始', menuSettings: '設定', menuHelp: '操作説明', menuLang: '言語', menuLeaderboard: 'ランキング', menuCredit: 'CREDIT', menuHistory: '歴史を知る', historyScrollHint: 'スクロール',
-    historyArticleTimeline: '横スクロールゲームの歴史', historyArticleConcept: '概念と構成要素', historyArticleAbout: 'ARCの概遊庫について',
+    historyArticleTimeline: '横スクロールゲームの歴史', historyArticleConcept: '概念と構成要素', historyArticleAbout: 'ARCの概遊庫について', historyAboutFanPage: 'ファンページへ',
     nameEntryTitle: '名前', nameEntryConfirmAgain: 'あと%s回押すと送信されます',
     nameEntryHint: '↑↓文字選択(パッド)　Enter/A:確定(空欄は-)　Backspace/B:戻る', nameEntryHint1: '文字キーで入力(最大4文字)', nameEntryHint2: 'Enterで決定(空欄のまま送信も可)',
     leaderboardTitle: 'ランキング', leaderboardEmpty: '記録はまだありません', leaderboardSwitch: '難易度切替', leaderboardPageSwitch: 'ページ切替', leaderboardLoading: '読み込み中',
@@ -2294,7 +2327,7 @@ const STR = {
   },
   en: {
     menuStart: 'Start Game', menuSettings: 'Settings', menuHelp: 'How to Play', menuLang: 'Language', menuLeaderboard: 'Leaderboard', menuCredit: 'CREDIT', menuHistory: 'Learn about history', historyScrollHint: 'Scroll',
-    historyArticleTimeline: 'History of Side-Scrollers', historyArticleConcept: 'Concepts & Structure', historyArticleAbout: "About Arc's Game Archive",
+    historyArticleTimeline: 'History of Side-Scrollers', historyArticleConcept: 'Concepts & Structure', historyArticleAbout: "About Arc's Game Archive", historyAboutFanPage: 'Visit Fan Page',
     nameEntryTitle: 'Name', nameEntryConfirmAgain: 'Press %s more time(s) to confirm',
     nameEntryHint: 'Up/Down: pick letter (pad)   Enter/A: Confirm (blank = -)   Backspace/B: Go back', nameEntryHint1: 'Type letter keys (up to 4 chars)', nameEntryHint2: 'Enter to confirm (blank is OK too)',
     leaderboardTitle: 'Leaderboard', leaderboardEmpty: 'No records yet', leaderboardSwitch: 'Switch difficulty', leaderboardPageSwitch: 'Page', leaderboardLoading: 'Loading',
@@ -5033,6 +5066,9 @@ const CONCEPT_CONTENT_EN = [
   { type: 'para', text: 'If this is your first time developing a game, you do not need to build the complete game from the beginning. Start with: one character + one small map + one enemy type + one attack + HP + camera. Once the player can move left and right, jump, attack enemies, defeat them, and reach the goal, you already have a playable core prototype of a side-scrolling action game.' },
 ];
 let historyArticleIndex = 0; // 0:發展史 1:概念與結構組成
+const FAN_PAGE_URL = 'https://www.facebook.com/profile.php?id=61594197187795';
+let aboutFanPageBtn = null; // 「關於Arc概遊庫」ページのリンクボタン領域(クリック判定用、非表示時はnull)
+let aboutFanPageFocused = false; // キーボード/ゲームパッドでリンクボタンにフォーカスが当たっているか(一番上でさらに↑を押すとフォーカスされる)
 const ABOUT_CONTENT_ZH = [
   { type: 'title', text: '關於「ARCの概遊庫」' },
   { type: 'para', text: '「ARCの概遊庫」這個名字，發想起源於諧音「蓋油庫」(即:概念遊戲保藏庫)。期望自己，以及所有開發者所開發的作品，都能夠像「蓋油庫」一樣，賺大錢！' },
@@ -5157,7 +5193,7 @@ function drawMenuHistorySelect() {
 function drawMenuHistory() {
   const lines = buildHistoryLines();
   const isAboutPage = historyArticleIndex === 2;
-  const headerH = isAboutPage ? 68 : 0; // ロゴ専用の固定ヘッダー領域(可捲動テキストとは重ならない)
+  const headerH = isAboutPage ? 104 : 0; // ロゴ+リンクボタン専用の固定ヘッダー領域(可捲動テキストとは重ならない)
   const viewTop = 16 + headerH, viewBottom = H - 32;
   const viewHeight = viewBottom - viewTop;
 
@@ -5174,6 +5210,28 @@ function drawMenuHistory() {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(studioLogoImg, W/2 - logoSize/2, 8, logoSize, logoSize);
     ctx.restore();
+  }
+
+  // ロゴ下に固定表示する「粉絲團」への外部リンクボタン(クリック判定はaboutFanPageBtnで行う)
+  if (isAboutPage) {
+    const btnW = 150, btnH = 26, btnX = W/2 - btnW/2, btnY = 72;
+    rectO(btnX, btnY, btnW, btnH, '#1877F2');
+    if (aboutFanPageFocused) {
+      const flash = frame % 20 < 10;
+      ctx.strokeStyle = flash ? '#ffffff' : '#ffdd33';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(btnX - 3, btnY - 3, btnW + 6, btnH + 6);
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 12px "Microsoft JhengHei", sans-serif';
+    ctx.fillStyle = '#fff';
+    const label = aboutFanPageFocused ? ('▶ ' + t('historyAboutFanPage') + ' ◀') : t('historyAboutFanPage');
+    ctx.fillText(label, btnX + btnW / 2, btnY + btnH / 2 + 1);
+    ctx.textBaseline = 'alphabetic';
+    aboutFanPageBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+  } else {
+    aboutFanPageBtn = null;
   }
 
   ctx.save();
@@ -5563,8 +5621,13 @@ function touchDpadPress(dir, pressed) {
   if (state === 'menu') {
     if (!pressed) return;
     if (menuScreen === 'historyArticle') {
-      if (dir === 'up') historyScroll -= 60;
-      else if (dir === 'down') historyScroll += 60;
+      if (dir === 'up') {
+        if (historyArticleIndex === 2 && historyScroll <= 0) aboutFanPageFocused = true;
+        else { aboutFanPageFocused = false; historyScroll -= 60; }
+      } else if (dir === 'down') {
+        if (aboutFanPageFocused) aboutFanPageFocused = false;
+        else historyScroll += 60;
+      }
       return;
     }
     if (dir === 'up') menuMove(-1);
@@ -5596,7 +5659,11 @@ function touchActionPress(role, pressed) {
   // role: 'punch'(=J/KeyZ、長押しで波動拳) | 'kick'(=K/KeyX)
   if (state === 'menu') {
     if (!pressed) return;
-    if (menuScreen === 'historyArticle') { menuScreen = 'history'; menuIndex = historyArticleIndex; return; }
+    if (menuScreen === 'historyArticle') {
+      if (role === 'punch' && aboutFanPageFocused) { window.open(FAN_PAGE_URL, '_blank', 'noopener,noreferrer'); return; }
+      menuScreen = 'history'; menuIndex = historyArticleIndex; aboutFanPageFocused = false;
+      return;
+    }
     if (role === 'punch') menuConfirm(); else menuBack();
     return;
   }
