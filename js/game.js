@@ -5659,6 +5659,12 @@ function touchDpadPress(dir, pressed) {
     else if (dir === 'down') pauseMove(1);
     return;
   }
+  if (state === 'nameEntry') {
+    if (!pressed) return;
+    if (dir === 'up') cycleNameEntryChar(1);
+    else if (dir === 'down') cycleNameEntryChar(-1);
+    return;
+  }
   if (state === 'leaderboard') {
     if (!pressed) return;
     if (dir === 'left') leaderboardSwitchTab(-1);
