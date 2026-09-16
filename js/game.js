@@ -2760,9 +2760,11 @@ function drawBossFireballs() {
   bossFireballs.forEach(fb => {
     const dispH = 38, dispW = dispH * naturalW / naturalH;
     const sx = fb.x - camX;
+    const pulse = 1 + Math.sin(frame * 0.25) * 0.08; // 飛行中にわずかに拡大縮小させて生き生きとした印象にする
     ctx.save();
     ctx.translate(sx + fb.w/2, fb.y + fb.h/2);
     if (fb.facing === -1) ctx.scale(-1, 1);
+    ctx.scale(pulse, pulse);
     ctx.drawImage(spriteBossFireball, -dispW/2, -dispH/2, dispW, dispH);
     ctx.restore();
   });
@@ -4063,9 +4065,11 @@ function drawHadoukens() {
   hadoukens.forEach(hd => {
     const dispH = 42, dispW = dispH * naturalW / naturalH;
     const sx = hd.x - camX;
+    const pulse = 1 + Math.sin(frame * 0.25) * 0.08; // 飛行中にわずかに拡大縮小させて生き生きとした印象にする
     ctx.save();
     ctx.translate(sx + hd.w/2, hd.y + hd.h/2);
     if (hd.facing === -1) ctx.scale(-1, 1); // 素材は右向きの絵なので左向きの時だけ反転
+    ctx.scale(pulse, pulse);
     ctx.drawImage(spriteHadoWave, -dispW/2, -dispH/2, dispW, dispH);
     ctx.restore();
   });
