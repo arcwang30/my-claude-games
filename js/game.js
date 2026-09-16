@@ -5347,6 +5347,11 @@ function isTouchDevice() {
     lastTouchEnd = now;
   }, { passive: false });
 })();
+// CSSのtouch-action:noneだけでは一部のモバイルブラウザ(特にiOS Safari)で
+// 上下ドラッグ時のページスクロール/バウンスを防ぎきれないため、
+// document全体のtouchmoveを直接抑止して二重に防止する
+// (このページにスクロールさせたいコンテンツは存在しないため、常に抑止して問題ない)
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
 function touchDpadPress(dir, pressed) {
   if (state === 'menu') {
