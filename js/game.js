@@ -27,15 +27,15 @@ function assetsReady() { return assetLoadTotal > 0 && assetLoadDone >= assetLoad
 const studioLogoImg = new Image();
 let studioLogoImgLoaded = false;
 studioLogoImg.onload = () => { studioLogoImgLoaded = true; };
-studioLogoImg.src = 'assets/images/studioLogoImg.png';
+studioLogoImg.src = 'images/studioLogoImg.png';
 const dojoStageBg = new Image();
 let dojoStageBgLoaded = false;
 dojoStageBg.onload = () => { dojoStageBgLoaded = true; };
-dojoStageBg.src = 'assets/images/dojoStageBg.jpg';
+dojoStageBg.src = 'images/dojoStageBg.jpg';
 const heroRefImg = new Image();
 let heroRefImgLoaded = false;
 heroRefImg.onload = () => { heroRefImgLoaded = true; };
-heroRefImg.src = 'assets/images/heroRefImg.png';
+heroRefImg.src = 'images/heroRefImg.png';
 
 // プレイヤー用の実写風スプライト(アップロードされたポーズ画像)
 const spriteStand = new Image();
@@ -45,26 +45,26 @@ let spriteStandLoaded = false, spritePunchLoaded = false, spriteKickLoaded = fal
 spriteStand.onload = () => { spriteStandLoaded = true; };
 spritePunch.onload = () => { spritePunchLoaded = true; };
 spriteKick.onload = () => { spriteKickLoaded = true; };
-spriteStand.src = 'assets/images/spriteStand.png';
-spritePunch.src = 'assets/images/spritePunch.png';
-spriteKick.src = 'assets/images/spriteKick.png';
+spriteStand.src = 'images/spriteStand.png';
+spritePunch.src = 'images/spritePunch.png';
+spriteKick.src = 'images/spriteKick.png';
 const spriteJump = new Image();
 let spriteJumpLoaded = false;
 spriteJump.onload = () => { spriteJumpLoaded = true; };
-spriteJump.src = 'assets/images/spriteJump.png';
+spriteJump.src = 'images/spriteJump.png';
 const spriteWalk = new Image();
 let spriteWalkLoaded = false;
 spriteWalk.onload = () => { spriteWalkLoaded = true; };
-spriteWalk.src = 'assets/images/spriteWalk.png';
+spriteWalk.src = 'images/spriteWalk.png';
 const spriteDuck = new Image();
 let spriteDuckLoaded = false;
 spriteDuck.onload = () => { spriteDuckLoaded = true; };
-spriteDuck.src = 'assets/images/spriteDuck.png';
+spriteDuck.src = 'images/spriteDuck.png';
 // 関卡背景:アップロードされた「風月客棧」イラストを実際の背景画像として使用
 const bgImg = new Image();
 let bgImgLoaded = false;
 bgImg.onload = () => { bgImgLoaded = true; };
-bgImg.src = 'assets/images/bgImg.png';
+bgImg.src = 'images/bgImg.png';
 
 // ===== ボスキャラクター(師父)用スプライト(アップロードされたイラストを使用) =====
 const bossSprites = {};
@@ -72,112 +72,112 @@ const bossSpritesLoaded = {};
 bossSpritesLoaded['stand'] = false;
 bossSprites['stand'] = new Image();
 bossSprites['stand'].onload = () => { bossSpritesLoaded['stand'] = true; };
-bossSprites['stand'].src = 'assets/images/bossSprites_stand.png';
+bossSprites['stand'].src = 'images/bossSprites_stand.png';
 bossSpritesLoaded['walk1'] = false;
 bossSprites['walk1'] = new Image();
 bossSprites['walk1'].onload = () => { bossSpritesLoaded['walk1'] = true; };
-bossSprites['walk1'].src = 'assets/images/bossSprites_walk1.png';
+bossSprites['walk1'].src = 'images/bossSprites_walk1.png';
 bossSpritesLoaded['walk2'] = false;
 bossSprites['walk2'] = new Image();
 bossSprites['walk2'].onload = () => { bossSpritesLoaded['walk2'] = true; };
-bossSprites['walk2'].src = 'assets/images/bossSprites_walk2.png'
+bossSprites['walk2'].src = 'images/bossSprites_walk2.png'
 bossSpritesLoaded['walk3'] = false;
 bossSprites['walk3'] = new Image();
 bossSprites['walk3'].onload = () => { bossSpritesLoaded['walk3'] = true; };
-bossSprites['walk3'].src = 'assets/images/bossSprites_walk3.png';;
+bossSprites['walk3'].src = 'images/bossSprites_walk3.png';;
 bossSpritesLoaded['punch'] = false;
 bossSprites['punch'] = new Image();
 bossSprites['punch'].onload = () => { bossSpritesLoaded['punch'] = true; };
-bossSprites['punch'].src = 'assets/images/bossSprites_punch.png'
+bossSprites['punch'].src = 'images/bossSprites_punch.png'
 bossSpritesLoaded['punchOut'] = false;
 bossSprites['punchOut'] = new Image();
 bossSprites['punchOut'].onload = () => { bossSpritesLoaded['punchOut'] = true; };
-bossSprites['punchOut'].src = 'assets/images/bossSprites_punchOut.png';
+bossSprites['punchOut'].src = 'images/bossSprites_punchOut.png';
 bossSpritesLoaded['punchBack'] = false;
 bossSprites['punchBack'] = new Image();
 bossSprites['punchBack'].onload = () => { bossSpritesLoaded['punchBack'] = true; };
-bossSprites['punchBack'].src = 'assets/images/bossSprites_punchBack.png';;
+bossSprites['punchBack'].src = 'images/bossSprites_punchBack.png';;
 bossSpritesLoaded['charge'] = false;
 bossSprites['charge'] = new Image();
 bossSprites['charge'].onload = () => { bossSpritesLoaded['charge'] = true; };
-bossSprites['charge'].src = 'assets/images/bossSprites_charge.png'
+bossSprites['charge'].src = 'images/bossSprites_charge.png'
 bossSpritesLoaded['kickOut'] = false;
 bossSprites['kickOut'] = new Image();
 bossSprites['kickOut'].onload = () => { bossSpritesLoaded['kickOut'] = true; };
-bossSprites['kickOut'].src = 'assets/images/bossSprites_kickOut.png';
+bossSprites['kickOut'].src = 'images/bossSprites_kickOut.png';
 bossSpritesLoaded['kickBack'] = false;
 bossSprites['kickBack'] = new Image();
 bossSprites['kickBack'].onload = () => { bossSpritesLoaded['kickBack'] = true; };
-bossSprites['kickBack'].src = 'assets/images/bossSprites_kickBack.png';;
+bossSprites['kickBack'].src = 'images/bossSprites_kickBack.png';;
 bossSpritesLoaded['firebreath'] = false;
 bossSprites['firebreath'] = new Image();
 bossSprites['firebreath'].onload = () => { bossSpritesLoaded['firebreath'] = true; };
-bossSprites['firebreath'].src = 'assets/images/bossSprites_firebreath.png';
+bossSprites['firebreath'].src = 'images/bossSprites_firebreath.png';
 bossSpritesLoaded['death'] = false;
 bossSprites['death'] = new Image();
 bossSprites['death'].onload = () => { bossSpritesLoaded['death'] = true; };
-bossSprites['death'].src = 'assets/images/bossSprites_death.png'
+bossSprites['death'].src = 'images/bossSprites_death.png'
 bossSpritesLoaded['hit'] = false;
 bossSprites['hit'] = new Image();
 bossSprites['hit'].onload = () => { bossSpritesLoaded['hit'] = true; };
-bossSprites['hit'].src = 'assets/images/bossSprites_hit.png'
+bossSprites['hit'].src = 'images/bossSprites_hit.png'
 bossSpritesLoaded['hold1'] = false;
 bossSprites['hold1'] = new Image();
 bossSprites['hold1'].onload = () => { bossSpritesLoaded['hold1'] = true; };
-bossSprites['hold1'].src = 'assets/images/bossSprites_hold1.png';
+bossSprites['hold1'].src = 'images/bossSprites_hold1.png';
 bossSpritesLoaded['hold2'] = false;
 bossSprites['hold2'] = new Image();
 bossSprites['hold2'].onload = () => { bossSpritesLoaded['hold2'] = true; };
-bossSprites['hold2'].src = 'assets/images/bossSprites_hold2.png';
+bossSprites['hold2'].src = 'images/bossSprites_hold2.png';
 bossSpritesLoaded['hold3'] = false;
 bossSprites['hold3'] = new Image();
 bossSprites['hold3'].onload = () => { bossSpritesLoaded['hold3'] = true; };
-bossSprites['hold3'].src = 'assets/images/bossSprites_hold3.png';
+bossSprites['hold3'].src = 'images/bossSprites_hold3.png';
 bossSpritesLoaded['cast1'] = false;
 bossSprites['cast1'] = new Image();
 bossSprites['cast1'].onload = () => { bossSpritesLoaded['cast1'] = true; };
-bossSprites['cast1'].src = 'assets/images/bossSprites_cast1.png';
+bossSprites['cast1'].src = 'images/bossSprites_cast1.png';
 bossSpritesLoaded['cast2'] = false;
 bossSprites['cast2'] = new Image();
 bossSprites['cast2'].onload = () => { bossSpritesLoaded['cast2'] = true; };
-bossSprites['cast2'].src = 'assets/images/bossSprites_cast2.png';
+bossSprites['cast2'].src = 'images/bossSprites_cast2.png';
 bossSpritesLoaded['cast3'] = false;
 bossSprites['cast3'] = new Image();
 bossSprites['cast3'].onload = () => { bossSpritesLoaded['cast3'] = true; };
-bossSprites['cast3'].src = 'assets/images/bossSprites_cast3.png';;;
+bossSprites['cast3'].src = 'images/bossSprites_cast3.png';;;
 function allBossSpritesReady() { return Object.values(bossSpritesLoaded).every(v => v); }
 
 // BOSSの新しい必殺技(火球)の飛行体イラスト
 const spriteBossFireball = new Image();
 let spriteBossFireballLoaded = false;
 spriteBossFireball.onload = () => { spriteBossFireballLoaded = true; };
-spriteBossFireball.src = 'assets/images/spriteBossFireball.png';
+spriteBossFireball.src = 'images/spriteBossFireball.png';
 
 
 // 残機(ライフ)表示用の主人公アイコン(アップロードされた頭部イラストを使用)
 const lifeIconImg = new Image();
 let lifeIconImgLoaded = false;
 lifeIconImg.onload = () => { lifeIconImgLoaded = true; };
-lifeIconImg.src = 'assets/images/lifeIconImg.png';
+lifeIconImg.src = 'images/lifeIconImg.png';
 
 // 波動拳(チャージ攻撃)用イラスト:溜めポーズ(hado1)・発射ポーズ(hado2)・飛行道具(wave)
 const spriteHado1 = new Image();
 let spriteHado1Loaded = false;
 spriteHado1.onload = () => { spriteHado1Loaded = true; };
-spriteHado1.src = 'assets/images/spriteHado1.png';
+spriteHado1.src = 'images/spriteHado1.png';
 
 const spriteHado2 = new Image();
 let spriteHado2Loaded = false;
 spriteHado2.onload = () => { spriteHado2Loaded = true; };
-spriteHado2.src = 'assets/images/spriteHado2.png';
+spriteHado2.src = 'images/spriteHado2.png';
 
 const spriteHadoWave = new Image();
 let spriteHadoWaveLoaded = false;
 spriteHadoWave.onload = () => { spriteHadoWaveLoaded = true; };
-spriteHadoWave.src = 'assets/images/spriteHadoWave.png';
+spriteHadoWave.src = 'images/spriteHadoWave.png';
 
 // 波動拳の効果音(実音源):集気中はループ再生、発射時に専用の音を1回再生
-const hadoHoldAudio = new Audio('assets/audio/hadoHoldAudio.mp3');
+const hadoHoldAudio = new Audio('audio/hadoHoldAudio.mp3');
 hadoHoldAudio.loop = true;
 hadoHoldAudio.preload = 'auto';
 hadoHoldAudio.volume = 0.7;
@@ -191,7 +191,7 @@ function stopHadoHold() {
   hadoHoldAudio.currentTime = 0;
 }
 
-const hadoFlyAudio = new Audio('assets/audio/hadoFlyAudio.mp3');
+const hadoFlyAudio = new Audio('audio/hadoFlyAudio.mp3');
 hadoFlyAudio.loop = false;
 hadoFlyAudio.preload = 'auto';
 hadoFlyAudio.volume = 0.8;
@@ -202,7 +202,7 @@ function playHadoFly() {
 }
 
 // 主人公が死亡した瞬間の効果音(実音源)
-const playerDeadAudio = new Audio('assets/audio/playerDeadAudio.mp3');
+const playerDeadAudio = new Audio('audio/playerDeadAudio.mp3');
 playerDeadAudio.loop = false;
 playerDeadAudio.preload = 'auto';
 playerDeadAudio.volume = 1.0;
@@ -212,7 +212,7 @@ function playPlayerDeadSfx() {
 }
 
 // BOSS(師父)が倒れた瞬間の効果音(実音源)
-const bossDeadAudio = new Audio('assets/audio/bossDeadAudio.mp3');
+const bossDeadAudio = new Audio('audio/bossDeadAudio.mp3');
 bossDeadAudio.loop = false;
 bossDeadAudio.preload = 'auto';
 bossDeadAudio.volume = 1.0;
@@ -222,7 +222,7 @@ function playBossDeadSfx() {
 }
 
 // 格擋(パリィ)成功時の効果音
-const parrySfxAudio = new Audio('assets/audio/parrySfxAudio.mp3');
+const parrySfxAudio = new Audio('audio/parrySfxAudio.mp3');
 parrySfxAudio.loop = false;
 parrySfxAudio.preload = 'auto';
 parrySfxAudio.volume = 0.9;
@@ -233,7 +233,7 @@ function playParrySfx() {
 }
 
 // タイトル画面で「press any key」を押した瞬間の効果音
-const titleConfirmSfxAudio = new Audio('assets/audio/titleConfirmSfxAudio.mp3');
+const titleConfirmSfxAudio = new Audio('audio/titleConfirmSfxAudio.mp3');
 titleConfirmSfxAudio.loop = false;
 titleConfirmSfxAudio.preload = 'auto';
 titleConfirmSfxAudio.volume = 0.9;
@@ -244,7 +244,7 @@ function playTitleConfirmSfx() {
 }
 
 // メニュー項目の切替(カーソル移動)用の効果音
-const menuMoveSfxAudio = new Audio('assets/audio/menuMoveSfxAudio.mp3');
+const menuMoveSfxAudio = new Audio('audio/menuMoveSfxAudio.mp3');
 menuMoveSfxAudio.loop = false;
 menuMoveSfxAudio.preload = 'auto';
 menuMoveSfxAudio.volume = 0.7;
@@ -255,7 +255,7 @@ function playMenuMoveSfx() {
 }
 
 // BOSSの火球発射時の効果音
-const bossFireballSfxAudio = new Audio('assets/audio/bossFireballSfxAudio.mp3');
+const bossFireballSfxAudio = new Audio('audio/bossFireballSfxAudio.mp3');
 bossFireballSfxAudio.loop = false;
 bossFireballSfxAudio.preload = 'auto';
 bossFireballSfxAudio.volume = 0.9;
@@ -271,32 +271,32 @@ function playBossFireballSfx() {
 const spriteParryReady = new Image();
 let spriteParryReadyLoaded = false;
 spriteParryReady.onload = () => { spriteParryReadyLoaded = true; };
-spriteParryReady.src = 'assets/images/spriteParryReady.png';
+spriteParryReady.src = 'images/spriteParryReady.png';
 const spriteParry = new Image();
 let spriteParryLoaded = false;
 spriteParry.onload = () => { spriteParryLoaded = true; };
-spriteParry.src = 'assets/images/spriteParry.png';
+spriteParry.src = 'images/spriteParry.png';
 const spritePlayerHit = new Image();
 let spritePlayerHitLoaded = false;
 spritePlayerHit.onload = () => { spritePlayerHitLoaded = true; };
-spritePlayerHit.src = 'assets/images/spritePlayerHit.png';
+spritePlayerHit.src = 'images/spritePlayerHit.png';
 
 // 主人公・雑魚敵(小兵)の死亡イラスト(倒れて伏せたポーズ)
 const spritePlayerDead = new Image();
 let spritePlayerDeadLoaded = false;
 spritePlayerDead.onload = () => { spritePlayerDeadLoaded = true; };
-spritePlayerDead.src = 'assets/images/spritePlayerDead.png';
+spritePlayerDead.src = 'images/spritePlayerDead.png';
 
 // 小兵の被弾(ヒットストップ)イラスト
 const spriteZakoHit = new Image();
 let spriteZakoHitLoaded = false;
 spriteZakoHit.onload = () => { spriteZakoHitLoaded = true; };
-spriteZakoHit.src = 'assets/images/spriteZakoHit.png';
+spriteZakoHit.src = 'images/spriteZakoHit.png';
 
 const spriteZakoDead = new Image();
 let spriteZakoDeadLoaded = false;
 spriteZakoDead.onload = () => { spriteZakoDeadLoaded = true; };
-spriteZakoDead.src = 'assets/images/spriteZakoDead.png';
+spriteZakoDead.src = 'images/spriteZakoDead.png';
 
 // 雑魚敵(小兵)の3コマ歩行アニメーション(アップロードされたイラストを使用、なめらかにループ)
 const zakoWalk1 = new Image();
@@ -306,9 +306,9 @@ let zakoWalk1Loaded = false, zakoWalk2Loaded = false, zakoWalk3Loaded = false;
 zakoWalk1.onload = () => { zakoWalk1Loaded = true; };
 zakoWalk2.onload = () => { zakoWalk2Loaded = true; };
 zakoWalk3.onload = () => { zakoWalk3Loaded = true; };
-zakoWalk1.src = 'assets/images/zakoWalk1.png';
-zakoWalk2.src = 'assets/images/zakoWalk2.png';
-zakoWalk3.src = 'assets/images/zakoWalk3.png';
+zakoWalk1.src = 'images/zakoWalk1.png';
+zakoWalk2.src = 'images/zakoWalk2.png';
+zakoWalk3.src = 'images/zakoWalk3.png';
 function zakoWalkReady() { return zakoWalk1Loaded && zakoWalk2Loaded && zakoWalk3Loaded; }
 
 // 踢腿型小兵(kicker)専用スプライト:上衣を白、ズボンを紫に配色を変更した歩行3コマ+踢腿攻撃
@@ -321,21 +321,21 @@ kickerWalk1.onload = () => { kickerWalk1Loaded = true; };
 kickerWalk2.onload = () => { kickerWalk2Loaded = true; };
 kickerWalk3.onload = () => { kickerWalk3Loaded = true; };
 kickerAttack.onload = () => { kickerAttackLoaded = true; };
-kickerWalk1.src = 'assets/images/kickerWalk1.png';
-kickerWalk2.src = 'assets/images/kickerWalk2.png';
-kickerWalk3.src = 'assets/images/kickerWalk3.png';
-kickerAttack.src = 'assets/images/kickerAttack.png';
+kickerWalk1.src = 'images/kickerWalk1.png';
+kickerWalk2.src = 'images/kickerWalk2.png';
+kickerWalk3.src = 'images/kickerWalk3.png';
+kickerAttack.src = 'images/kickerAttack.png';
 function kickerSpritesReady() { return kickerWalk1Loaded && kickerWalk2Loaded && kickerWalk3Loaded && kickerAttackLoaded; }
 // 踢腿型小兵(kicker)専用の被弾(ヒットストップ)イラスト
 const kickerHit = new Image();
 let kickerHitLoaded = false;
 kickerHit.onload = () => { kickerHitLoaded = true; };
-kickerHit.src = 'assets/images/kickerHit.png'
+kickerHit.src = 'images/kickerHit.png'
 // 踢腿型小兵(kicker)専用の死亡イラスト
 const kickerDead = new Image();
 let kickerDeadLoaded = false;
 kickerDead.onload = () => { kickerDeadLoaded = true; };
-kickerDead.src = 'assets/images/kickerDead.png';;
+kickerDead.src = 'images/kickerDead.png';;
 
 
 
@@ -345,20 +345,20 @@ const enemySpritePunch = new Image();
 let enemySpriteWalkLoaded = false, enemySpritePunchLoaded = false;
 enemySpriteWalk.onload = () => { enemySpriteWalkLoaded = true; };
 enemySpritePunch.onload = () => { enemySpritePunchLoaded = true; };
-enemySpriteWalk.src = 'assets/images/enemySpriteWalk.png';
-enemySpritePunch.src = 'assets/images/enemySpritePunch.png';
+enemySpriteWalk.src = 'images/enemySpriteWalk.png';
+enemySpritePunch.src = 'images/enemySpritePunch.png';
 // 前景・背景の植栽オーバーレイ(キャラクターの奥行き表現用)
 // bgBushImg: 画面上部寄りの茂み(遠景) -> 背景の一部として先に描画し、常にキャラクターの後方に表示
 // fgBushImg: 画面下部寄りの茂み(近景) -> キャラクター描画後に重ねて描画し、キャラクターがその奥を通り抜けるように見せる
 const bgBushImg = new Image();
 let bgBushImgLoaded = false;
 bgBushImg.onload = () => { bgBushImgLoaded = true; };
-bgBushImg.src = 'assets/images/bgBushImg.png';
+bgBushImg.src = 'images/bgBushImg.png';
 
 const fgBushImg = new Image();
 let fgBushImgLoaded = false;
 fgBushImg.onload = () => { fgBushImgLoaded = true; };
-fgBushImg.src = 'assets/images/fgBushImg.png';
+fgBushImg.src = 'images/fgBushImg.png';
 
 function drawBackgroundBushes() {
   if (gameMode === 'dojo') return; // 武道場は専用の固定背景を使うため重ねない
@@ -396,7 +396,7 @@ function enemySpritesReady() {
 const titleHeroImg = new Image();
 let titleHeroImgLoaded = false;
 titleHeroImg.onload = () => { titleHeroImgLoaded = true; };
-titleHeroImg.src = 'assets/images/titleHeroImg.png';
+titleHeroImg.src = 'images/titleHeroImg.png';
 
 // ===== オープニング漫画(ストーリー導入)画像 =====
 const storyImgs = [];
@@ -433,116 +433,116 @@ const storyCaptions = {
 storyImgsLoaded[0] = false;
 storyImgs[0] = new Image();
 storyImgs[0].onload = () => { storyImgsLoaded[0] = true; };
-storyImgs[0].src = 'assets/images/storyImgs_0.jpg';
+storyImgs[0].src = 'images/storyImgs_0.jpg';
 storyImgsLoaded[1] = false;
 storyImgs[1] = new Image();
 storyImgs[1].onload = () => { storyImgsLoaded[1] = true; };
-storyImgs[1].src = 'assets/images/storyImgs_1.jpg';
+storyImgs[1].src = 'images/storyImgs_1.jpg';
 storyImgsLoaded[2] = false;
 storyImgs[2] = new Image();
 storyImgs[2].onload = () => { storyImgsLoaded[2] = true; };
-storyImgs[2].src = 'assets/images/storyImgs_2.jpg';
+storyImgs[2].src = 'images/storyImgs_2.jpg';
 storyImgsLoaded[3] = false;
 storyImgs[3] = new Image();
 storyImgs[3].onload = () => { storyImgsLoaded[3] = true; };
-storyImgs[3].src = 'assets/images/storyImgs_3.jpg';
+storyImgs[3].src = 'images/storyImgs_3.jpg';
 storyImgsLoaded[4] = false;
 storyImgs[4] = new Image();
 storyImgs[4].onload = () => { storyImgsLoaded[4] = true; };
-storyImgs[4].src = 'assets/images/storyImgs_4.jpg';
+storyImgs[4].src = 'images/storyImgs_4.jpg';
 storyImgsLoaded[5] = false;
 storyImgs[5] = new Image();
 storyImgs[5].onload = () => { storyImgsLoaded[5] = true; };
-storyImgs[5].src = 'assets/images/storyImgs_5.jpg';
+storyImgs[5].src = 'images/storyImgs_5.jpg';
 storyImgsLoaded[6] = false;
 storyImgs[6] = new Image();
 storyImgs[6].onload = () => { storyImgsLoaded[6] = true; };
-storyImgs[6].src = 'assets/images/storyImgs_6.jpg';
+storyImgs[6].src = 'images/storyImgs_6.jpg';
 function allStoryImgsReady() { return storyImgsLoaded.length === 7 && storyImgsLoaded.every(v => v); }
 
 const titleLogoImg = new Image();
 let titleLogoImgLoaded = false;
 titleLogoImg.onload = () => { titleLogoImgLoaded = true; };
-titleLogoImg.src = 'assets/images/titleLogoImg.png';
+titleLogoImg.src = 'images/titleLogoImg.png';
 
 // ===== 新主人公スプライトセット(SUNSTRIKE FIST 全アクション) =====
 const newSpritesLoaded = {};
 const spriteStandIdle = new Image();
 newSpritesLoaded['spriteStandIdle'] = false;
 spriteStandIdle.onload = () => { newSpritesLoaded['spriteStandIdle'] = true; };
-spriteStandIdle.src = 'assets/images/spriteStandIdle.png';
+spriteStandIdle.src = 'images/spriteStandIdle.png';
 const spriteWalk1 = new Image();
 newSpritesLoaded['spriteWalk1'] = false;
 spriteWalk1.onload = () => { newSpritesLoaded['spriteWalk1'] = true; };
-spriteWalk1.src = 'assets/images/spriteWalk1.png';
+spriteWalk1.src = 'images/spriteWalk1.png';
 const spriteWalk2 = new Image();
 newSpritesLoaded['spriteWalk2'] = false;
 spriteWalk2.onload = () => { newSpritesLoaded['spriteWalk2'] = true; };
-spriteWalk2.src = 'assets/images/spriteWalk2.png';
+spriteWalk2.src = 'images/spriteWalk2.png';
 const spriteWalk3 = new Image();
 newSpritesLoaded['spriteWalk3'] = false;
 spriteWalk3.onload = () => { newSpritesLoaded['spriteWalk3'] = true; };
-spriteWalk3.src = 'assets/images/spriteWalk3.png';
+spriteWalk3.src = 'images/spriteWalk3.png';
 const spritePunchStand = new Image();
 newSpritesLoaded['spritePunchStand'] = false;
 spritePunchStand.onload = () => { newSpritesLoaded['spritePunchStand'] = true; };
-spritePunchStand.src = 'assets/images/spritePunchStand.png';
+spritePunchStand.src = 'images/spritePunchStand.png';
 const spriteKickChamber = new Image();
 newSpritesLoaded['spriteKickChamber'] = false;
 spriteKickChamber.onload = () => { newSpritesLoaded['spriteKickChamber'] = true; };
-spriteKickChamber.src = 'assets/images/spriteKickChamber.png';
+spriteKickChamber.src = 'images/spriteKickChamber.png';
 const spriteKickOut = new Image();
 newSpritesLoaded['spriteKickOut'] = false;
 spriteKickOut.onload = () => { newSpritesLoaded['spriteKickOut'] = true; };
-spriteKickOut.src = 'assets/images/spriteKickOut.png';
+spriteKickOut.src = 'images/spriteKickOut.png';
 const spriteJumpLift = new Image();
 newSpritesLoaded['spriteJumpLift'] = false;
 spriteJumpLift.onload = () => { newSpritesLoaded['spriteJumpLift'] = true; };
-spriteJumpLift.src = 'assets/images/spriteJumpLift.png';
+spriteJumpLift.src = 'images/spriteJumpLift.png';
 const spriteJumpPunch = new Image();
 newSpritesLoaded['spriteJumpPunch'] = false;
 spriteJumpPunch.onload = () => { newSpritesLoaded['spriteJumpPunch'] = true; };
-spriteJumpPunch.src = 'assets/images/spriteJumpPunch.png';
+spriteJumpPunch.src = 'images/spriteJumpPunch.png';
 const spriteJumpKick = new Image();
 newSpritesLoaded['spriteJumpKick'] = false;
 spriteJumpKick.onload = () => { newSpritesLoaded['spriteJumpKick'] = true; };
-spriteJumpKick.src = 'assets/images/spriteJumpKick.png';
+spriteJumpKick.src = 'images/spriteJumpKick.png';
 const spriteDuckIdle = new Image();
 newSpritesLoaded['spriteDuckIdle'] = false;
 spriteDuckIdle.onload = () => { newSpritesLoaded['spriteDuckIdle'] = true; };
-spriteDuckIdle.src = 'assets/images/spriteDuckIdle.png';
+spriteDuckIdle.src = 'images/spriteDuckIdle.png';
 const spriteDuckPunch = new Image();
 newSpritesLoaded['spriteDuckPunch'] = false;
 spriteDuckPunch.onload = () => { newSpritesLoaded['spriteDuckPunch'] = true; };
-spriteDuckPunch.src = 'assets/images/spriteDuckPunch.png';
+spriteDuckPunch.src = 'images/spriteDuckPunch.png';
 const spriteDuckKick = new Image();
 newSpritesLoaded['spriteDuckKick'] = false;
 spriteDuckKick.onload = () => { newSpritesLoaded['spriteDuckKick'] = true; };
-spriteDuckKick.src = 'assets/images/spriteDuckKick.png';
+spriteDuckKick.src = 'images/spriteDuckKick.png';
 const spriteFlip1 = new Image();
 newSpritesLoaded['spriteFlip1'] = false;
 spriteFlip1.onload = () => { newSpritesLoaded['spriteFlip1'] = true; };
-spriteFlip1.src = 'assets/images/spriteFlip1.png';
+spriteFlip1.src = 'images/spriteFlip1.png';
 const spriteFlip2 = new Image();
 newSpritesLoaded['spriteFlip2'] = false;
 spriteFlip2.onload = () => { newSpritesLoaded['spriteFlip2'] = true; };
-spriteFlip2.src = 'assets/images/spriteFlip2.png';
+spriteFlip2.src = 'images/spriteFlip2.png';
 const spriteFlip3 = new Image();
 newSpritesLoaded['spriteFlip3'] = false;
 spriteFlip3.onload = () => { newSpritesLoaded['spriteFlip3'] = true; };
-spriteFlip3.src = 'assets/images/spriteFlip3.png';
+spriteFlip3.src = 'images/spriteFlip3.png';
 const spriteFlip4 = new Image();
 newSpritesLoaded['spriteFlip4'] = false;
 spriteFlip4.onload = () => { newSpritesLoaded['spriteFlip4'] = true; };
-spriteFlip4.src = 'assets/images/spriteFlip4.png';
+spriteFlip4.src = 'images/spriteFlip4.png';
 const spriteFlip5 = new Image();
 newSpritesLoaded['spriteFlip5'] = false;
 spriteFlip5.onload = () => { newSpritesLoaded['spriteFlip5'] = true; };
-spriteFlip5.src = 'assets/images/spriteFlip5.png';
+spriteFlip5.src = 'images/spriteFlip5.png';
 const spriteFlip6 = new Image();
 newSpritesLoaded['spriteFlip6'] = false;
 spriteFlip6.onload = () => { newSpritesLoaded['spriteFlip6'] = true; };
-spriteFlip6.src = 'assets/images/spriteFlip6.png';
+spriteFlip6.src = 'images/spriteFlip6.png';
 const spriteFlipFrames = [null, spriteFlip1, spriteFlip2, spriteFlip3, spriteFlip4, spriteFlip5, spriteFlip6];
 
 // 各ポーズ素材は別々に描かれたイラストで縦横比・体感サイズにばらつきがあるため、
@@ -578,16 +578,16 @@ function allPlayerSpritesReady() {
 const girlSprites = {};
 const girlSpritesLoaded = {};
 ['stand','walk1','walk2','walk3'].forEach(k => { girlSpritesLoaded[k] = false; girlSprites[k] = new Image(); girlSprites[k].onload = () => { girlSpritesLoaded[k] = true; }; });
-girlSprites['stand'].src = 'assets/images/girlSprites_stand.png';
-girlSprites['walk1'].src = 'assets/images/girlSprites_walk1.png';
-girlSprites['walk2'].src = 'assets/images/girlSprites_walk2.png';
-girlSprites['walk3'].src = 'assets/images/girlSprites_walk3.png';
+girlSprites['stand'].src = 'images/girlSprites_stand.png';
+girlSprites['walk1'].src = 'images/girlSprites_walk1.png';
+girlSprites['walk2'].src = 'images/girlSprites_walk2.png';
+girlSprites['walk3'].src = 'images/girlSprites_walk3.png';
 function girlSpritesReady() { return Object.values(girlSpritesLoaded).every(v => v); }
 // エンディングの抱擁イラスト(主人公とヒロインが再会するシーン専用)
 const spriteHappyEnding = new Image();
 let spriteHappyEndingLoaded = false;
 spriteHappyEnding.onload = () => { spriteHappyEndingLoaded = true; };
-spriteHappyEnding.src = 'assets/images/spriteHappyEnding.png';
+spriteHappyEnding.src = 'images/spriteHappyEnding.png';
 
 
 
@@ -621,11 +621,11 @@ function beep(freq, dur, type='square', vol=0.15) {
 }
 // ===== 実録音の効果音(パンチ/キック/ジャンプ/攻撃ヒット/敵の悲鳴) =====
 const sfxClips = {
-  punch: new Audio('assets/audio/sfxClips_punch.mp3'),
-  kick: new Audio('assets/audio/sfxClips_kick.mp3'),
-  jump: new Audio('assets/audio/sfxClips_jump.mp3'),
-  pong: new Audio('assets/audio/sfxClips_pong.mp3'),
-  hurt: new Audio('assets/audio/sfxClips_hurt.mp3'),
+  punch: new Audio('audio/sfxClips_punch.mp3'),
+  kick: new Audio('audio/sfxClips_kick.mp3'),
+  jump: new Audio('audio/sfxClips_jump.mp3'),
+  pong: new Audio('audio/sfxClips_pong.mp3'),
+  hurt: new Audio('audio/sfxClips_hurt.mp3'),
 };
 Object.values(sfxClips).forEach(a => { a.preload = 'auto'; a.volume = 0.85; });
 function playSfxClip(name) {
@@ -700,7 +700,7 @@ function createMusicEngine() {
   return { playNote, stop, isPlaying: () => playing, setPlaying: v => { playing = v; }, setTimeoutId: id => { timeoutId = id; } };
 }
 // タイトル画面BGM(実音源、45秒ループ)
-const titleThemeAudio = new Audio('assets/audio/titleThemeAudio.mp3');
+const titleThemeAudio = new Audio('audio/titleThemeAudio.mp3');
 titleThemeAudio.loop = true;
 titleThemeAudio.preload = 'auto';
 titleThemeAudio.volume = 0.65;
@@ -715,7 +715,7 @@ function stopChinaMusic() {
 }
 
 // ステージ(プレイ中)BGM(実音源、約64秒ループ)
-const gameThemeAudio = new Audio('assets/audio/gameThemeAudio.mp3');
+const gameThemeAudio = new Audio('audio/gameThemeAudio.mp3');
 gameThemeAudio.loop = true;
 gameThemeAudio.preload = 'auto';
 gameThemeAudio.volume = 0.65;
@@ -730,7 +730,7 @@ function stopGameMusic() {
 }
 
 // 武道場モード専用BGM(実音源、ループ)
-const dojoThemeAudio = new Audio('assets/audio/dojoThemeAudio.mp3');
+const dojoThemeAudio = new Audio('audio/dojoThemeAudio.mp3');
 dojoThemeAudio.loop = true;
 dojoThemeAudio.preload = 'auto';
 function playDojoMusic() {
@@ -742,7 +742,7 @@ function stopDojoMusic() {
 }
 
 // 「了解歷史」画面専用BGM(実音源、ループ)
-const historyThemeAudio = new Audio('assets/audio/historyThemeAudio.mp3');
+const historyThemeAudio = new Audio('audio/historyThemeAudio.mp3');
 historyThemeAudio.loop = true;
 historyThemeAudio.preload = 'auto';
 function playHistoryMusic() {
@@ -754,7 +754,7 @@ function stopHistoryMusic() {
 }
 
 // 漫画(オープニングストーリー)再生中のBGM(実音源、ループ)
-const openingThemeAudio = new Audio('assets/audio/openingThemeAudio.mp3');
+const openingThemeAudio = new Audio('audio/openingThemeAudio.mp3');
 openingThemeAudio.loop = true;
 openingThemeAudio.preload = 'auto';
 openingThemeAudio.volume = 0.6;
@@ -769,13 +769,13 @@ function stopOpeningMusic() {
 }
 
 // 「Kungfu Start」効果音(主人公の入場演出用、1回再生)
-const kungfuStartAudio = new Audio('assets/audio/kungfuStartAudio.mp3');
+const kungfuStartAudio = new Audio('audio/kungfuStartAudio.mp3');
 kungfuStartAudio.loop = false;
 kungfuStartAudio.preload = 'auto';
 kungfuStartAudio.volume = 0.8;
 
 // ボス戦BGM(実音源、約60秒ループ)
-const bossThemeAudio = new Audio('assets/audio/bossThemeAudio.mp3');
+const bossThemeAudio = new Audio('audio/bossThemeAudio.mp3');
 bossThemeAudio.loop = true;
 bossThemeAudio.preload = 'auto';
 bossThemeAudio.volume = 0.65;
@@ -790,7 +790,7 @@ function stopBossMusic() {
 }
 
 // ステージクリアBGM(実音源、ループ)
-const clearThemeAudio = new Audio('assets/audio/clearThemeAudio.mp3');
+const clearThemeAudio = new Audio('audio/clearThemeAudio.mp3');
 clearThemeAudio.loop = false;
 clearThemeAudio.preload = 'auto';
 clearThemeAudio.volume = 0.75;
@@ -805,7 +805,7 @@ function stopStageClearMusic() {
 }
 
 // エンディング(BOSS撃破後の再会シーン)専用BGM。BOSS撃破の瞬間から抱擁演出が終わるまで再生する
-const fxEndingAudio = new Audio('assets/audio/fxEndingAudio.mp3');
+const fxEndingAudio = new Audio('audio/fxEndingAudio.mp3');
 fxEndingAudio.loop = true;
 fxEndingAudio.preload = 'auto';
 fxEndingAudio.volume = 1.0;
@@ -820,7 +820,7 @@ function stopFxEnding() {
 }
 
 // GAME OVER画面用BGM(実音源、1回のみ再生・ループしない)
-const gameOverThemeAudio = new Audio('assets/audio/gameOverThemeAudio.mp3');
+const gameOverThemeAudio = new Audio('audio/gameOverThemeAudio.mp3');
 gameOverThemeAudio.loop = false;
 gameOverThemeAudio.preload = 'auto';
 gameOverThemeAudio.volume = 0.7;
@@ -834,7 +834,7 @@ function stopGameOverMusic() {
 }
 
 // CREDIT画面用BGM(ループ再生)
-const creditThemeAudio = new Audio('assets/audio/creditThemeAudio.mp3');
+const creditThemeAudio = new Audio('audio/creditThemeAudio.mp3');
 creditThemeAudio.loop = true;
 creditThemeAudio.preload = 'auto';
 function playCreditMusic() {
