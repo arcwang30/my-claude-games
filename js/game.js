@@ -3198,15 +3198,17 @@ function update() {
           boss.vx = 0;
           boss.y = 0;
         }
-        if (!boss.jumpAttackHit && boss.jumpAttackTimer === Math.round(AIR_LEN * 0.65)) {
+        if (!boss.jumpAttackHit && boss.jumpAttackTimer <= AIR_LEN) {
+          // 踏み込み距離が発動距離(110〜300px)に対して足りず、固定フレームでの判定だと
+          // 空振りしやすかったため、滞空中は毎フレーム判定して踏み込みが届いた瞬間に命中させる
           const reach = 34; // 踏み込みが深い分、通常の近接攻撃より少し長めの判定にする
           const bossAtkBox = { x: boss.facing===1 ? boss.x+boss.w : boss.x-reach, y: GROUND_Y-boss.h+10, w: reach, h: 46 };
           const pBox = { x: player.x, y: GROUND_Y-player.h+15, w: player.w, h: 40 };
           if (rectsOverlap(bossAtkBox, pBox) && player.invuln<=0 && !player.dead) {
             player.hp -= Math.round(12 * diffSettings().bossDmgMul); player.invuln = 45; player.hitStun = 16; resetCombo(); sfx.hit();
             spawnParticles(player.x+player.w/2, GROUND_Y-player.h/2, '#ff4444');
+            boss.jumpAttackHit = true;
           }
-          boss.jumpAttackHit = true;
         }
         if (boss.jumpAttackTimer > TOTAL_LEN) {
           boss.state = dist > 90 ? 'approach' : 'attack';
@@ -3225,7 +3227,10 @@ function update() {
             boss.vx = boss.facing * (boss.enraged ? 7.5 : 6);
             boss.spinAngle += 0.9; // 高速回転
             const reach = 26;
-            const bossAtkBox = { x: boss.facing===1 ? boss.x+boss.w-10 : boss.x-reach+10, y: GROUND_Y-boss.h+10, w: boss.w+reach, h: 50 };
+            // 修正前は判定幅がboss.w+reachでかつ本体の内側10pxから始まっていたため、
+            // 見た目より遠くまで(前方に最大76px)判定が届いてしまっていた。
+            // 本体の幅ぶんはそのままに、前方への食い込みはreach分だけに抑える。
+            const bossAtkBox = { x: boss.facing===1 ? boss.x : boss.x-reach, y: GROUND_Y-boss.h+10, w: boss.w+reach, h: 50 };
             const pBox = { x: player.x, y: GROUND_Y-player.h+15, w: player.w, h: 40 };
             if (rectsOverlap(bossAtkBox, pBox) && player.invuln<=0 && !player.dead) {
               player.hp -= Math.round(11 * diffSettings().bossDmgMul); player.invuln = 45; player.hitStun = 16; resetCombo(); sfx.hit();
@@ -3287,8 +3292,9 @@ function update() {
           boss.state = 'special'; boss.specialTimer = 0; boss.specialHit = false; boss.vx = 0;
           boss.specialShotsTotal = 1 + Math.floor(Math.random()*3); // 今回の必殺技で発射する火球の回数(1~3回ランダム)
           boss.moveQuirkTimer = 0; boss.moveQuirk = null; // 必殺技が割り込んだら後退/停止の演出は打ち切る
-        } else if (boss.jumpAttackCooldown <= 0 && dist > 110 && dist < 300 && Math.random() < 0.01 * diffSettings().bossMoveTriggerMul) {
-          // 中間距離から一気に踏み込むジャンプキック
+        } else if (boss.jumpAttackCooldown <= 0 && dist > 110 && dist < 175 && Math.random() < 0.01 * diffSettings().bossMoveTriggerMul) {
+          // 中間距離から一気に踏み込むジャンプキック(通常時に踏み込みで実際に届く距離は最大でも約143pxのため、
+          // 発動距離の上限をそれに合わせて300→175に短縮し、発動しても届かず空振りになるケースを大幅に減らす)
           boss.state = 'jumpAttack'; boss.jumpAttackTimer = 0; boss.jumpAttackHit = false; boss.vx = 0; boss.y = 0;
           boss.moveQuirkTimer = 0; boss.moveQuirk = null;
         } else if (boss.spinAttackCooldown <= 0 && dist > 150 && dist < 380 && Math.random() < 0.008 * diffSettings().bossMoveTriggerMul) {
