@@ -19,16 +19,20 @@ window.Image = function(...args) {
   return img;
 };
 window.Image.prototype = NativeImage.prototype;
-// 音声も同様に追跡する。'canplaythrough' で判定するのは、再生開始直後に途切れる
-// (バッファ不足のまま再生してしまう)ことを避けるため — 単に読み込み中フラグを立てるだけでは不十分。
+// 音声も読み込み状況だけ追跡する(表示や将来の用途向け)が、起動をブロックする条件には含めない。
+// iOS Safari等のモバイルブラウザはpreload="auto"を指定してもユーザー操作が発生するまで
+// 音声の本体データを取得しないため、'canplaythrough'待ちを起動条件に含めると
+// 「入力を受け付けない→ユーザー操作が起きない→音声が読み込まれない」という
+// 循環待ちに陥り、画面がずっと読み込み中のまま進めなくなってしまう(実際にモバイル実機で発生)。
+let audioLoadTotal = 0, audioLoadDone = 0;
 const NativeAudio = window.Audio;
 window.Audio = function(...args) {
   const audio = new NativeAudio(...args);
-  assetLoadTotal++;
+  audioLoadTotal++;
   let settled = false;
-  const markDone = () => { if (settled) return; settled = true; assetLoadDone++; };
+  const markDone = () => { if (settled) return; settled = true; audioLoadDone++; };
   audio.addEventListener('canplaythrough', markDone, { once: true });
-  audio.addEventListener('error', markDone); // 読み込み失敗時もローディング画面が固まらないようにする
+  audio.addEventListener('error', markDone);
   return audio;
 };
 window.Audio.prototype = NativeAudio.prototype;
