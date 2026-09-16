@@ -19,6 +19,19 @@ window.Image = function(...args) {
   return img;
 };
 window.Image.prototype = NativeImage.prototype;
+// 音声も同様に追跡する。'canplaythrough' で判定するのは、再生開始直後に途切れる
+// (バッファ不足のまま再生してしまう)ことを避けるため — 単に読み込み中フラグを立てるだけでは不十分。
+const NativeAudio = window.Audio;
+window.Audio = function(...args) {
+  const audio = new NativeAudio(...args);
+  assetLoadTotal++;
+  let settled = false;
+  const markDone = () => { if (settled) return; settled = true; assetLoadDone++; };
+  audio.addEventListener('canplaythrough', markDone, { once: true });
+  audio.addEventListener('error', markDone); // 読み込み失敗時もローディング画面が固まらないようにする
+  return audio;
+};
+window.Audio.prototype = NativeAudio.prototype;
 function assetsReady() { return assetLoadTotal > 0 && assetLoadDone >= assetLoadTotal; }
 
 // タイトル画面用:アップロードされた参考イラスト(飛び蹴りポーズ)を実際の画像として使用
