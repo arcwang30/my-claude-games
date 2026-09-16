@@ -1,4 +1,8 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html {
+    touch-action: none; /* bodyだけでなくhtmlにも設定し、端末のスワイプ戻る/進むジェスチャーを抑止する */
+    overscroll-behavior: none; /* 左右スワイプでのページ遷移・引っ張って更新を無効化(対応ブラウザのみ) */
+  }
   body {
     background: #101018;
     display: flex;
@@ -9,6 +13,7 @@
     font-family: 'Courier New', monospace;
     color: #fff;
     touch-action: none; /* 連続タップでのズームや、指のドラッグによるページスクロールを両方防止 */
+    overscroll-behavior: none;
   }
   #gameWrap {
     position: relative;
@@ -77,14 +82,14 @@
     -webkit-tap-highlight-color: transparent;
   }
   .tbtn:active, .tbtn.pressed { background: rgba(255,221,51,0.45); border-color: #ffdd33; }
-  #tStick { position: absolute; left: 4vw; bottom: 17vh; width: 34vw; height: 34vw; max-width: 165px; max-height: 165px;
+  #tStick { position: absolute; left: max(24px, 6vw); bottom: 17vh; width: 34vw; height: 34vw; max-width: 165px; max-height: 165px;
     border-radius: 50%; background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.35);
     touch-action: none; pointer-events: auto; }
   #tStickKnob { position: absolute; width: 44%; height: 44%; left: 28%; top: 28%; border-radius: 50%;
     background: rgba(255,255,255,0.28); border: 2px solid rgba(255,255,255,0.55);
     pointer-events: none; transition: background 0.1s, border-color 0.1s; }
   #tStickKnob.pressed { background: rgba(255,221,51,0.45); border-color: #ffdd33; }
-  #tActions { position: absolute; right: 3vw; bottom: 5vh; width: 54vw; height: 54vw; max-width: 250px; max-height: 250px; }
+  #tActions { position: absolute; right: max(16px, 3vw); bottom: 5vh; width: 54vw; height: 54vw; max-width: 250px; max-height: 250px; }
   #tParry { width: 44%; height: 44%; top: 2%;   left: 28%; font-size: 18px; }
   #tJump  { width: 44%; height: 44%; bottom: 2%; left: 28%; font-size: 18px; }
   #tPunch { width: 44%; height: 44%; top: 28%; left: 2%;   font-size: 18px; }
