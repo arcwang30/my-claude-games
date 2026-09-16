@@ -2381,6 +2381,7 @@ let dojoCountdown = 0; // 開始前カウントダウン(5→1→FIGHT!!)用の�
 let dojoCountdownActive = false; // 入場効果音の再生が終わり、カウントダウンを実際に進めてよいか
 let dojoCountdownFailsafe = 0; // 音声endedイベント未発火時の保険タイマー
 let dojoFightTextTimer = 0; // "FIGHT!!"表示用タイマー
+let enteringFailsafe = 0; // 劇情模式の入場演出:kungfuStartAudioが再生できない(素材読込失敗等)場合でも進行が止まらないようにする保険タイマー
 // ===== COMBO(連続撃破ボーナス) =====
 let comboCount = 0; // 現在の連続撃破数(被弾すると0にリセット)
 let comboFlashTimer = 0; // "COMBO+N"表示のポップ演出用タイマー
@@ -2442,7 +2443,7 @@ function resetGame() {
   GAME_TIME_LIMIT = (gameMode === 'dojo' ? DOJO_TIME_LIMIT_SEC : diffSettings().timeLimitSec) * 60;
   gameTimeFrames = GAME_TIME_LIMIT;
   dojoElapsedFrames = 0;
-  dojoFightTextTimer = 0; dojoCountdownActive = false; dojoCountdownFailsafe = 0;
+  dojoFightTextTimer = 0; dojoCountdownActive = false; dojoCountdownFailsafe = 0; enteringFailsafe = 0;
   comboCount = 0; comboFlashTimer = 0; comboBreakTimer = 0;
   girlX = null; girlWalkFrame = 0; girlArrived = false;
   demoPhase = 'walkCenter'; demoPhaseTimer = 0; heartParticles = [];
@@ -2511,6 +2512,7 @@ function beginStageEntry() {
   kungfuStartAudio.currentTime = 0;
   kungfuStartAudio.play().catch(() => {});
   kungfuStartAudio.addEventListener('ended', onKungfuStartEnded, { once: true });
+  enteringFailsafe = 150; // 音声イベントが発火しない場合の保険(2.5秒後には強制的に開始)
 }
 function onKungfuStartEnded() {
   if (state !== 'entering') return; // 既に他の状態へ進んでいた場合は何もしない(念のため)
@@ -2544,6 +2546,7 @@ function updateEntering() {
   } else {
     player.vx = 0; // 到着後はKungfu Startが終わるまで立ち姿で待機
   }
+  if (enteringFailsafe > 0) { enteringFailsafe--; if (enteringFailsafe <= 0) onKungfuStartEnded(); }
 }
 
 function spawnEnemy(x, type) {
