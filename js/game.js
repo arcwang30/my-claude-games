@@ -5523,6 +5523,17 @@ function drawStart() {
     ctx.drawImage(studioLogoImg, 8, 8, logoSize, logoSize);
     ctx.restore();
   }
+
+  // 著作権表記(タイトル主畫面のみ右下に表示。黒縁取りで視認性を確保)
+  ctx.save();
+  ctx.textAlign = 'right';
+  ctx.font = 'bold 12px monospace';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+  ctx.strokeText('© Arc\'s Concept Game', W - 10, H - 10);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('© Arc\'s Concept Game', W - 10, H - 10);
+  ctx.restore();
 }
 
 // ===== GAME OVER画面:[重新遊戲](難易度選択へ)/[返回主畫面](タイトルへ)の2択メニュー =====
