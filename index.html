@@ -100,6 +100,7 @@
   #tPunch { width: 44%; height: 44%; top: 28%; left: 2%;   font-size: 18px; }
   #tKick  { width: 44%; height: 44%; top: 28%; right: 2%;  font-size: 18px; }
   #tPause { display: none; position: fixed; top: max(10px, env(safe-area-inset-top)); right: 10px; width: 38px; height: 38px; font-size: 16px; z-index: 60; pointer-events: auto; }
+
 </style>
 </head>
 <body>
@@ -148,6 +149,24 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 const GROUND_Y = H - 50; // 木の床の位置に合わせてやや下寄りに調整
+
+// ===== 讀取進度追蹤 =====
+// 素材を個別ファイル化した(単一HTMLへのbase64埋め込みをやめた)ことで、
+// 読み込み完了までに多数のHTTPリクエストが発生するようになった。
+// window.Image をラップし、以降に生成される全画像の読み込み状況を自動集計する
+// (個々のsprite宣言側には一切手を入れずに済む)。
+let assetLoadTotal = 0, assetLoadDone = 0;
+const NativeImage = window.Image;
+window.Image = function(...args) {
+  const img = new NativeImage(...args);
+  assetLoadTotal++;
+  const markDone = () => { assetLoadDone++; };
+  img.addEventListener('load', markDone);
+  img.addEventListener('error', markDone); // 読み込み失敗時もローディング画面が固まらないようにする
+  return img;
+};
+window.Image.prototype = NativeImage.prototype;
+function assetsReady() { return assetLoadTotal > 0 && assetLoadDone >= assetLoadTotal; }
 
 // タイトル画面用:アップロードされた参考イラスト(飛び蹴りポーズ)を実際の画像として使用
 // 武道場モード専用の背景イラスト(固定画面)
@@ -2383,7 +2402,7 @@ const STR = {
     pauseTitle: 'PAUSE', pauseResume: '繼續遊戲', pauseSettings: '設定', pauseHelp: '操作說明', pauseReturnMain: '返回主選單',
     confirmReturnText: '確定返回?', confirmYes: '是', confirmNo: '否',
     hintMove: '移動', hintJump: '跳躍', hintDuck: '蹲下', hintPunch: '揮拳(長按蓄力放波動拳)', hintKick: '踢腿', hintStart: '開始', hintParry: '格擋', hintPause: '暫停', hintStick: '方向鍵/左搖桿',
-    pressAnyKey: '請按任意鍵',
+    pressAnyKey: '請按任意鍵', loading: '載入中',
   },
   ja: {
     menuStart: 'ゲーム開始', menuSettings: '設定', menuHelp: '操作説明', menuLang: '言語', menuLeaderboard: 'ランキング', menuCredit: 'CREDIT', menuHistory: '歴史を知る', historyScrollHint: 'スクロール',
@@ -2426,7 +2445,7 @@ const STR = {
     pauseTitle: 'PAUSE', pauseResume: 'ゲームに戻る', pauseSettings: '設定', pauseHelp: '操作説明', pauseReturnMain: 'メインメニューへ戻る',
     confirmReturnText: '本当に戻りますか?', confirmYes: 'はい', confirmNo: 'いいえ',
     hintMove: '移動', hintJump: 'ジャンプ', hintDuck: 'しゃがみ', hintPunch: 'パンチ(長押しで波動拳)', hintKick: 'キック', hintStart: 'スタート', hintParry: 'パリィ', hintPause: 'ポーズ', hintStick: '方向キー/左スティック',
-    pressAnyKey: 'どれかキーを押してください',
+    pressAnyKey: 'どれかキーを押してください', loading: '読み込み中',
   },
   en: {
     menuStart: 'Start Game', menuSettings: 'Settings', menuHelp: 'How to Play', menuLang: 'Language', menuLeaderboard: 'Leaderboard', menuCredit: 'CREDIT', menuHistory: 'Learn about history', historyScrollHint: 'Scroll',
@@ -2469,7 +2488,7 @@ const STR = {
     pauseTitle: 'PAUSE', pauseResume: 'Resume', pauseSettings: 'Settings', pauseHelp: 'How to Play', pauseReturnMain: 'Return to Main Menu',
     confirmReturnText: 'Return to main menu?', confirmYes: 'Yes', confirmNo: 'No',
     hintMove: 'Move', hintJump: 'Jump', hintDuck: 'Duck', hintPunch: 'Punch (hold to charge Hadouken)', hintKick: 'Kick', hintStart: 'Start', hintParry: 'Parry', hintPause: 'Pause', hintStick: 'D-Pad/Left Stick',
-    pressAnyKey: 'Press any key',
+    pressAnyKey: 'Press any key', loading: 'Loading',
   },
 };
 function t(key) { return (STR[currentLang] && STR[currentLang][key]) || STR.zh[key] || key; }
@@ -2512,6 +2531,12 @@ let dojoFightTextTimer = 0; // "FIGHT!!"表示用タイマー
 // ===== COMBO(連続撃破ボーナス) =====
 let comboCount = 0; // 現在の連続撃破数(被弾すると0にリセット)
 let comboFlashTimer = 0; // "COMBO+N"表示のポップ演出用タイマー
+let comboBreakTimer = 0; // 連續が途切れた瞬間の「破碎」演出用タイマー
+let comboBreakValue = 0; // 破碎演出で表示する、途切れる直前の連續数
+function comboTier(count) {
+  return count >= 10 ? 2 : count >= 5 ? 1 : 0; // 0=cyan, 1=orange, 2=gold
+}
+const COMBO_TIER_COLORS = ['#00e5ff', '#ffb200', '#ffdd33'];
 function registerComboKill() {
   comboCount++;
   if (comboCount >= 2) {
@@ -2521,6 +2546,10 @@ function registerComboKill() {
   }
 }
 function resetCombo() {
+  if (comboCount >= 2) {
+    comboBreakValue = comboCount;
+    comboBreakTimer = 30;
+  }
   comboCount = 0;
 }
 // 武道場モードの難易度は経過時間に応じて段階的(30秒ごと)に上昇させる(最大10段階)
@@ -2561,7 +2590,7 @@ function resetGame() {
   gameTimeFrames = GAME_TIME_LIMIT;
   dojoElapsedFrames = 0;
   dojoFightTextTimer = 0; dojoCountdownActive = false; dojoCountdownFailsafe = 0;
-  comboCount = 0; comboFlashTimer = 0;
+  comboCount = 0; comboFlashTimer = 0; comboBreakTimer = 0;
   girlX = null; girlWalkFrame = 0; girlArrived = false;
   demoPhase = 'walkCenter'; demoPhaseTimer = 0; heartParticles = [];
   nameEntryChars = ['', '', '', '']; nameEntryIndex = 0; leaderboardHighlightIndex = -1; gameOverIndex = 0; leaderboardLoading = false; postGameChoiceIndex = 0;
@@ -2890,6 +2919,7 @@ function update() {
   }
   if (parryFlashTimer > 0) parryFlashTimer--;
   if (comboFlashTimer > 0) comboFlashTimer--;
+  if (comboBreakTimer > 0) comboBreakTimer--;
 
   // ===== 制限時間のカウントダウン =====
   if (!player.dead && !player.pendingDeath && gameTimeFrames > 0) {
@@ -4129,6 +4159,32 @@ function drawHealthBar(x, y, w, h, hp, maxHp, color) {
 }
 
 function draw() {
+  drawInner();
+  if (!assetsReady()) drawLoadingOverlay();
+}
+// 讀取中の場合、既存の描画ロジックを一切変更せず、その上に半透明の讀取畫面を重ねて表示する
+function drawLoadingOverlay() {
+  const pct = assetLoadTotal > 0 ? Math.min(100, Math.round(100 * assetLoadDone / assetLoadTotal)) : 0;
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,6,4,0.72)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 20px monospace';
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = '#1a1410';
+  const label = `${t('loading')}... ${pct}%`;
+  ctx.strokeText(label, W/2, H/2 - 4);
+  ctx.fillStyle = '#ffdd33';
+  ctx.fillText(label, W/2, H/2 - 4);
+
+  const barW = 240, barH = 10, barX = W/2 - barW/2, barY = H/2 + 14;
+  rect(barX, barY, barW, barH, '#2a241c');
+  rect(barX, barY, barW * (pct/100), barH, '#ffdd33');
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(barX+0.5, barY+0.5, barW-1, barH-1);
+  ctx.restore();
+}
+function drawInner() {
   drawBackground();
 
   if (state === 'start') { drawStart(); drawComicFrame(); return; }
@@ -4390,20 +4446,35 @@ function drawHUD() {
     for (let i=0;i<lives-1;i++) { rect(W-20-i*18, 10, 10, 14, '#ffdddd'); rect(W-20-i*18, 8, 10, 4, PAL.hair); }
   }
 
-  // COMBO表示:2連続撃破から表示を開始し、被弾すると消える(残機アイコンの下、画面右上に配置)
-  if (comboCount >= 2) {
+  // COMBO表示:2連続撃破から表示を開始し、被弾で途切れると「破碎」演出とともに消える(残機アイコンの下、画面右上に配置)
+  if (comboCount >= 2 || comboBreakTimer > 0) {
+    const breaking = comboBreakTimer > 0;
+    const displayCount = breaking ? comboBreakValue : comboCount;
+    const tierColor = breaking ? '#e24b4a' : COMBO_TIER_COLORS[comboTier(displayCount)];
     const comboPulse = comboFlashTimer > 0 ? 1 + (comboFlashTimer / 45) * 0.45 : 1;
+    const breakProgress = breaking ? 1 - comboBreakTimer / 30 : 0; // 0→1で下に落ちながらフェードアウト
+
     ctx.save();
     ctx.textAlign = 'right';
-    ctx.translate(W - 10, 94);
+    ctx.globalAlpha = breaking ? Math.max(0, 1 - breakProgress) : 1;
+    ctx.translate(W - 10, 94 + breakProgress * 18);
     ctx.scale(comboPulse, comboPulse);
-    ctx.font = 'bold 28px monospace';
+    ctx.font = 'bold 22px monospace';
     ctx.lineWidth = 4;
     ctx.strokeStyle = '#1a1410';
-    ctx.strokeText('COMBO+' + comboCount, 0, 0);
-    ctx.fillStyle = '#00e5ff';
-    ctx.fillText('COMBO+' + comboCount, 0, 0);
+    const label = 'COMBO x' + displayCount;
+    ctx.strokeText(label, 0, 0);
+    ctx.fillStyle = tierColor;
+    ctx.fillText(label, 0, 0);
     ctx.restore();
+
+    if (!breaking) {
+      // 常駐ゲージ:連續数が伸びるほど満ちていく(15連續で満タン)
+      const gaugeW = 96, gaugeH = 6;
+      const gaugeProgress = Math.min(1, displayCount / 15);
+      rect(W - 10 - gaugeW, 100, gaugeW, gaugeH, '#2a241c');
+      rect(W - 10 - gaugeW, 100, gaugeW * gaugeProgress, gaugeH, tierColor);
+    }
   }
 
   const progress = Math.min(1, camX/(LEVEL_LENGTH-W));
@@ -5627,6 +5698,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 loop();
+
 </script>
 </body>
 </html>
