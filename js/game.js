@@ -2214,7 +2214,7 @@ const STR = {
     leaderboardTitle: '排行榜', leaderboardEmpty: '尚無紀錄', leaderboardSwitch: '切換難度', leaderboardPageSwitch: '換頁', leaderboardLoading: '讀取中',
     difficultyTitle: '選擇難度',
     modeSelectTitle: '選擇模式', modeStory: '劇情模式', modeDojo: '武道模式',
-    modeStoryDesc: '循序漸進的劇情關卡,可選擇難度', modeDojoDesc: '固定畫面生存戰,殘機1,限時2分鐘拚高分', difficultyEasy: '簡單', difficultyNormal: '普通', difficultyHard: '困難',
+    modeStoryDesc: '循序漸進的劇情關卡,可選擇難度', modeDojoDesc: '固定畫面生存戰,殘機1,限時1分鐘拚高分', difficultyEasy: '簡單', difficultyNormal: '普通', difficultyHard: '困難',
     difficultyEasyDesc: '敵人較少較弱,殘機較多(3隻)', difficultyNormalDesc: '標準挑戰,敵人稍強、殘機較少(2隻)',
     difficultyHardDesc: '敵人更多更強,BOSS更硬,殘機僅1隻',
     settingsTitle: '設定', settingsMusic: '音樂', settingsSfx: '音效', settingsControl: '操作', settingsScale: '畫面大小',
@@ -2257,7 +2257,7 @@ const STR = {
     leaderboardTitle: 'ランキング', leaderboardEmpty: '記録はまだありません', leaderboardSwitch: '難易度切替', leaderboardPageSwitch: 'ページ切替', leaderboardLoading: '読み込み中',
     difficultyTitle: '難易度選択',
     modeSelectTitle: 'モード選択', modeStory: 'ストーリーモード', modeDojo: '道場モード',
-    modeStoryDesc: '難易度を選べる通常のストーリーステージ', modeDojoDesc: '固定画面のサバイバル戦、残機1、制限時間2分でハイスコアを狙う', difficultyEasy: 'かんたん', difficultyNormal: 'ふつう', difficultyHard: 'むずかしい',
+    modeStoryDesc: '難易度を選べる通常のストーリーステージ', modeDojoDesc: '固定画面のサバイバル戦、残機1、制限時間1分でハイスコアを狙う', difficultyEasy: 'かんたん', difficultyNormal: 'ふつう', difficultyHard: 'むずかしい',
     difficultyEasyDesc: '敵が少なく弱め、残機が多い(3機)', difficultyNormalDesc: '標準的な難易度、敵がやや強く残機が少ない(2機)',
     difficultyHardDesc: '敵が多く強力、BOSSも強化、残機は1機のみ',
     settingsTitle: '設定', settingsMusic: '音楽', settingsSfx: '効果音', settingsControl: '操作方法', settingsScale: '画面サイズ',
@@ -2300,7 +2300,7 @@ const STR = {
     leaderboardTitle: 'Leaderboard', leaderboardEmpty: 'No records yet', leaderboardSwitch: 'Switch difficulty', leaderboardPageSwitch: 'Page', leaderboardLoading: 'Loading',
     difficultyTitle: 'Select Difficulty',
     modeSelectTitle: 'Select Mode', modeStory: 'Story Mode', modeDojo: 'Dojo Mode',
-    modeStoryDesc: 'Standard story stages with difficulty selection', modeDojoDesc: 'Fixed-screen survival, 1 life, 2-minute high score challenge', difficultyEasy: 'Easy', difficultyNormal: 'Normal', difficultyHard: 'Hard',
+    modeStoryDesc: 'Standard story stages with difficulty selection', modeDojoDesc: 'Fixed-screen survival, 1 life, 1-minute high score challenge', difficultyEasy: 'Easy', difficultyNormal: 'Normal', difficultyHard: 'Hard',
     difficultyEasyDesc: 'Fewer, weaker enemies and more lives (3)', difficultyNormalDesc: 'Standard challenge, tougher enemies, fewer lives (2)',
     difficultyHardDesc: 'More/tougher enemies, stronger boss, only 1 life',
     settingsTitle: 'Settings', settingsMusic: 'Music', settingsSfx: 'SFX', settingsControl: 'Controls', settingsScale: 'Screen Size',
@@ -2358,15 +2358,27 @@ let leaderboardHighlightIndex = -1; // 直前に登録した順位をハイラ�
 // ===== 難易度設定 =====
 // [簡單]を基準とし、[普通][困難]は敵の生成頻度・同時出現数・攻撃力・BOSSの体力/攻撃力・制限時間・残機を段階的に厳しくする
 const DIFFICULTY_PRESETS = {
-  easy:   { spawnMin: 90, spawnRange: 50, maxEnemies: 5, enemyDmgMul: 1.0, bossHpMul: 1.0, bossDmgMul: 1.0, timeLimitSec: 240, lives: 3 },
-  normal: { spawnMin: 65, spawnRange: 40, maxEnemies: 6, enemyDmgMul: 1.3, bossHpMul: 1.25, bossDmgMul: 1.2, timeLimitSec: 240, lives: 2 },
-  hard:   { spawnMin: 45, spawnRange: 30, maxEnemies: 7, enemyDmgMul: 1.6, bossHpMul: 1.5, bossDmgMul: 1.4, timeLimitSec: 240, lives: 1 },
+  // bossApproachSpeed/bossEnragedApproachSpeed: 通常時/覚醒時の接近速度
+  // bossMoveTriggerMul: 必殺技・跳躍攻撃・旋轉攻撃の発動確率にかける倍率
+  // bossMoveCooldownMul: 上記3種の(通常時)クールダウンにかける倍率(大きいほど間隔が長い)
+  // bossEnrageCooldownMul: 覚醒中の必殺技クールダウンにかける倍率
+  // bossQuirkMul: 後退/一時停止(隙)の発生確率にかける倍率(大きいほど隙が多い)
+  // enrageThreshold: 覚醒が発動するHP割合(この値を下回った瞬間に発動)
+  easy:   { spawnMin: 90, spawnRange: 50, maxEnemies: 5, enemyDmgMul: 1.0, bossHpMul: 1.0, bossDmgMul: 1.0, timeLimitSec: 240, lives: 3,
+            bossApproachSpeed: 0.9, bossEnragedApproachSpeed: 1.3, bossMoveTriggerMul: 0.6, bossMoveCooldownMul: 1.4,
+            bossEnrageCooldownMul: 0.6, bossQuirkMul: 1.8, enrageThreshold: 0.3 },
+  normal: { spawnMin: 65, spawnRange: 40, maxEnemies: 6, enemyDmgMul: 1.3, bossHpMul: 1.25, bossDmgMul: 1.2, timeLimitSec: 240, lives: 2,
+            bossApproachSpeed: 1.1, bossEnragedApproachSpeed: 1.6, bossMoveTriggerMul: 1.0, bossMoveCooldownMul: 1.0,
+            bossEnrageCooldownMul: 0.4, bossQuirkMul: 1.0, enrageThreshold: 0.5 },
+  hard:   { spawnMin: 45, spawnRange: 30, maxEnemies: 7, enemyDmgMul: 1.6, bossHpMul: 1.5, bossDmgMul: 1.4, timeLimitSec: 240, lives: 1,
+            bossApproachSpeed: 1.4, bossEnragedApproachSpeed: 2.0, bossMoveTriggerMul: 1.6, bossMoveCooldownMul: 0.7,
+            bossEnrageCooldownMul: 0.25, bossQuirkMul: 0.4, enrageThreshold: 0.65 },
 };
 let difficulty = 'easy';
 function diffSettings() { return DIFFICULTY_PRESETS[difficulty] || DIFFICULTY_PRESETS.easy; }
 // ===== ゲームモード(劇情模式/武道模式) =====
 let gameMode = 'story'; // 'story' | 'dojo'
-const DOJO_TIME_LIMIT_SEC = 120; // 武道場モードの制限時間(2分固定)
+const DOJO_TIME_LIMIT_SEC = 60; // 武道場モードの制限時間(1分固定)
 const DOJO_LIVES = 1; // 武道場モードは残機1固定
 let dojoElapsedFrames = 0; // 武道場モード開始からの経過フレーム数(難易度の漸進上昇に使用)
 let dojoCountdown = 0; // 開始前カウントダウン(5→1→FIGHT!!)用のタイマー
@@ -2398,9 +2410,9 @@ function resetCombo() {
   }
   comboCount = 0;
 }
-// 武道場モードの難易度は経過時間に応じて段階的(30秒ごと)に上昇させる(最大10段階)
+// 武道場モードの難易度は経過時間に応じて段階的(5秒ごと)に上昇させる(最大12段階)
 function dojoDifficultyLevel() {
-  return Math.min(12, Math.floor(dojoElapsedFrames / (15 * 60))); // 15秒ごとに難易度上昇(2分間で最大12段階まで到達)
+  return Math.min(12, Math.floor(dojoElapsedFrames / (5 * 60))); // 5秒ごとに難易度上昇(1分間で最大12段階=上限まで到達)
 }
 function dojoMaxEnemies() {
   return Math.min(12, 6 + dojoDifficultyLevel()); // 開始時から6体、最大12体まで増加
@@ -2546,7 +2558,7 @@ function spawnEnemy(x, type) {
     state:'approach', attackTimer:0, hitCooldown:0, walkFrame:0, dead:false, deathTimer:0 });
 }
 function spawnBoss(x) {
-  const bossHp = Math.round(230 * diffSettings().bossHpMul); // 体力を底上げ(以前より倒れにくく)
+  const bossHp = Math.round(300 * diffSettings().bossHpMul); // 体力を底上げ(以前より倒れにくく。3難易度とも適度に増量)
   boss = { x, y:0, w:60, h:84, hp:bossHp, maxHp:bossHp, vx:0, knockbackVx:0, facing:-1, state:'approach',
     attackTimer:0, attackVariant:0, hitCooldown:0, walkFrame:0, dead:false, deathTimer:0,
     specialTimer:0, specialCooldown:180, specialHit:false, specialShotsTotal:1, enraged:false,
@@ -2555,10 +2567,10 @@ function spawnBoss(x) {
     spinAttackTimer:0, spinAttackCooldown:240, spinAttackHit:false, spinAngle:0, spinReboundVx:0, spinReboundVy:0 };
 }
 
-// 残りHPが3割を切った瞬間に一度だけ発動:必殺技の予備動作ポーズ+炎の粒子で覚醒を演出し、
+// 残りHPが半分を切った瞬間に一度だけ発動:必殺技の予備動作ポーズ+炎の粒子で覚醒を演出し、
 // 演出が終わるまでは攻撃も接近もしない(演出後は接近速度アップ+必殺技クールダウン短縮で攻勢を強める)
 function maybeTriggerBossEnrage() {
-  if (!boss || boss.enraged || boss.hp <= 0 || boss.hp / boss.maxHp >= 0.3) return;
+  if (!boss || boss.enraged || boss.hp <= 0 || boss.hp / boss.maxHp >= diffSettings().enrageThreshold) return;
   boss.enraged = true;
   boss.specialCooldown = Math.min(boss.specialCooldown, 90);
   boss.state = 'enrageIntro';
@@ -3136,8 +3148,10 @@ function update() {
           boss.specialHit = false;
           boss.attackTimer = 0;
           boss.y = 0;
-          // 次の必殺技までの間隔(通常は約5~8秒、覚醒後は約2~3.3秒に短縮)
-          boss.specialCooldown = boss.enraged ? (120 + Math.random()*80) : (300 + Math.random()*180);
+          // 次の必殺技までの間隔(難易度・覚醒状態で倍率をかける)
+          boss.specialCooldown = boss.enraged
+            ? (120 + Math.random()*80) * diffSettings().bossEnrageCooldownMul
+            : (300 + Math.random()*180) * diffSettings().bossMoveCooldownMul;
         }
       } else if (boss.state === 'jumpAttack') {
         // 跳躍攻撃:中間距離から大きく踏み込んでジャンプキックを繰り出す
@@ -3166,7 +3180,7 @@ function update() {
           boss.jumpAttackTimer = 0;
           boss.jumpAttackHit = false;
           boss.y = 0;
-          boss.jumpAttackCooldown = 240 + Math.random()*180; // 次の跳躍攻撃までの間隔(約4~7秒)
+          boss.jumpAttackCooldown = (240 + Math.random()*180) * diffSettings().bossMoveCooldownMul; // 次の跳躍攻撃までの間隔
         }
       } else if (boss.state === 'spinAttack') {
         // 旋轉攻撃:高速回転しながら突進し、命中した瞬間に斜め後方上空へ吹き飛ぶ。
@@ -3194,7 +3208,7 @@ function update() {
               boss.state = dist > 90 ? 'approach' : 'attack';
               boss.spinAttackTimer = 0;
               boss.spinAngle = 0;
-              boss.spinAttackCooldown = 300 + Math.random()*200; // 次の旋轉攻撃までの間隔(約5~8.3秒)
+              boss.spinAttackCooldown = (300 + Math.random()*200) * diffSettings().bossMoveCooldownMul; // 次の旋轉攻撃までの間隔(約5~8.3秒)
             }
           }
         } else {
@@ -3214,7 +3228,7 @@ function update() {
             boss.spinAngle = 0;
             boss.spinReboundVx = 0;
             boss.spinReboundVy = 0;
-            boss.spinAttackCooldown = 300 + Math.random()*200; // 次の旋轉攻撃までの間隔(約5~8.3秒)
+            boss.spinAttackCooldown = (300 + Math.random()*200) * diffSettings().bossMoveCooldownMul; // 次の旋轉攻撃までの間隔(約5~8.3秒)
           }
         }
       } else if (dist > 72) {
@@ -3228,23 +3242,23 @@ function update() {
           }
           if (boss.moveQuirkTimer <= 0) boss.moveQuirk = null;
         } else {
-          boss.vx = boss.facing*(boss.enraged ? 1.6 : 1.1); boss.walkFrame += 0.15; boss.state='approach';
+          boss.vx = boss.facing*(boss.enraged ? diffSettings().bossEnragedApproachSpeed : diffSettings().bossApproachSpeed); boss.walkFrame += 0.15; boss.state='approach';
           // 単調にずっと追いかけるだけにならないよう、覚醒前はまれに後退/一時停止を挟む(覚醒後は攻勢一辺倒にする)
-          if (!boss.enraged && Math.random() < 0.006) {
+          if (!boss.enraged && Math.random() < 0.006 * diffSettings().bossQuirkMul) {
             boss.moveQuirk = Math.random() < 0.5 ? 'retreat' : 'pause';
             boss.moveQuirkTimer = boss.moveQuirk === 'pause' ? (30 + Math.random()*30) : (20 + Math.random()*20);
           }
         }
-        // 接近中、間合いがある時ほど必殺技(噴火)をランダムに発動しやすくする
-        if (boss.specialCooldown <= 0 && dist < 420 && Math.random() < 0.012) {
+        // 接近中、間合いがある時ほど必殺技(噴火)をランダムに発動しやすくする(発動確率は難易度で倍率をかける)
+        if (boss.specialCooldown <= 0 && dist < 420 && Math.random() < 0.012 * diffSettings().bossMoveTriggerMul) {
           boss.state = 'special'; boss.specialTimer = 0; boss.specialHit = false; boss.vx = 0;
           boss.specialShotsTotal = 1 + Math.floor(Math.random()*3); // 今回の必殺技で発射する火球の回数(1~3回ランダム)
           boss.moveQuirkTimer = 0; boss.moveQuirk = null; // 必殺技が割り込んだら後退/停止の演出は打ち切る
-        } else if (boss.jumpAttackCooldown <= 0 && dist > 110 && dist < 300 && Math.random() < 0.01) {
+        } else if (boss.jumpAttackCooldown <= 0 && dist > 110 && dist < 300 && Math.random() < 0.01 * diffSettings().bossMoveTriggerMul) {
           // 中間距離から一気に踏み込むジャンプキック
           boss.state = 'jumpAttack'; boss.jumpAttackTimer = 0; boss.jumpAttackHit = false; boss.vx = 0; boss.y = 0;
           boss.moveQuirkTimer = 0; boss.moveQuirk = null;
-        } else if (boss.spinAttackCooldown <= 0 && dist > 150 && dist < 380 && Math.random() < 0.008) {
+        } else if (boss.spinAttackCooldown <= 0 && dist > 150 && dist < 380 && Math.random() < 0.008 * diffSettings().bossMoveTriggerMul) {
           // やや長い間合いから高速回転しながら突進する
           boss.state = 'spinAttack'; boss.spinAttackTimer = 0; boss.spinAttackHit = false;
           boss.spinAngle = 0; boss.spinReboundVx = 0; boss.vx = 0;
@@ -3273,7 +3287,7 @@ function update() {
           boss.attackVariant = Math.random() < 0.5 ? 0 : 1; // 次のサイクルも改めてランダムに選ぶ
         }
         // 近距離でもまれに必殺技を織り交ぜる
-        if (boss.specialCooldown <= 0 && Math.random() < 0.004) {
+        if (boss.specialCooldown <= 0 && Math.random() < 0.004 * diffSettings().bossMoveTriggerMul) {
           boss.state = 'special'; boss.specialTimer = 0; boss.specialHit = false; boss.attackTimer = 0; boss.vx = 0;
         }
       }
