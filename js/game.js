@@ -127,6 +127,14 @@ bossSpritesLoaded['cast3'] = false;
 bossSprites['cast3'] = new Image();
 bossSprites['cast3'].onload = () => { bossSpritesLoaded['cast3'] = true; };
 bossSprites['cast3'].src = 'images/bossSprites_cast3.png';;;
+bossSpritesLoaded['jumpKick'] = false;
+bossSprites['jumpKick'] = new Image();
+bossSprites['jumpKick'].onload = () => { bossSpritesLoaded['jumpKick'] = true; };
+bossSprites['jumpKick'].src = 'images/bossSprites_jumpKick.png';
+bossSpritesLoaded['spin'] = false;
+bossSprites['spin'] = new Image();
+bossSprites['spin'].onload = () => { bossSpritesLoaded['spin'] = true; };
+bossSprites['spin'].src = 'images/bossSprites_spin.png';
 function allBossSpritesReady() { return Object.values(bossSpritesLoaded).every(v => v); }
 
 // BOSSの新しい必殺技(火球)の飛行体イラスト
@@ -2539,9 +2547,32 @@ function spawnEnemy(x, type) {
 }
 function spawnBoss(x) {
   const bossHp = Math.round(230 * diffSettings().bossHpMul); // 体力を底上げ(以前より倒れにくく)
-  boss = { x, y:0, w:60, h:84, hp:bossHp, maxHp:bossHp, vx:0, facing:-1, state:'approach',
-    attackTimer:0, hitCooldown:0, walkFrame:0, dead:false, deathTimer:0,
-    specialTimer:0, specialCooldown:180, specialHit:false, specialShotsTotal:1 };
+  boss = { x, y:0, w:60, h:84, hp:bossHp, maxHp:bossHp, vx:0, knockbackVx:0, facing:-1, state:'approach',
+    attackTimer:0, attackVariant:0, hitCooldown:0, walkFrame:0, dead:false, deathTimer:0,
+    specialTimer:0, specialCooldown:180, specialHit:false, specialShotsTotal:1, enraged:false,
+    moveQuirk:null, moveQuirkTimer:0, enrageIntroTimer:0,
+    jumpAttackTimer:0, jumpAttackCooldown:150, jumpAttackHit:false, deathFallVy:0,
+    spinAttackTimer:0, spinAttackCooldown:240, spinAttackHit:false, spinAngle:0, spinReboundVx:0, spinReboundVy:0 };
+}
+
+// 残りHPが3割を切った瞬間に一度だけ発動:必殺技の予備動作ポーズ+炎の粒子で覚醒を演出し、
+// 演出が終わるまでは攻撃も接近もしない(演出後は接近速度アップ+必殺技クールダウン短縮で攻勢を強める)
+function maybeTriggerBossEnrage() {
+  if (!boss || boss.enraged || boss.hp <= 0 || boss.hp / boss.maxHp >= 0.3) return;
+  boss.enraged = true;
+  boss.specialCooldown = Math.min(boss.specialCooldown, 90);
+  boss.state = 'enrageIntro';
+  boss.enrageIntroTimer = 90;
+  boss.vx = 0;
+  boss.moveQuirk = null; boss.moveQuirkTimer = 0;
+  spawnMangaText('覺醒!!', boss.x+boss.w/2, GROUND_Y-boss.h-45, true, '#ff3344');
+  // 覚醒の瞬間、身体全体から炎が噴き出すような派手な初期バーストにする
+  for (let i=0;i<8;i++) {
+    const px = boss.x + boss.w/2 + (Math.random()-0.5)*boss.w*1.4;
+    const py = GROUND_Y - boss.h*Math.random();
+    spawnParticles(px, py, Math.random() < 0.5 ? '#ff6622' : '#ffcc55', 5, 7);
+  }
+  spawnParticles(boss.x+boss.w/2, GROUND_Y-boss.h/2, '#ff3344', 10, 5);
 }
 
 function rectsOverlap(a, b) { return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }
@@ -2630,7 +2661,7 @@ function spawnBossFireball() {
   // ランダムで「低空(ジャンプで回避)」か「中空(しゃがみで回避)」のどちらかを飛ばす
   const isHigh = Math.random() < 0.5;
   const y = isHigh ? (GROUND_Y - 72 - h/2) : (GROUND_Y - 30 - h/2); // 中空版はもう少し高めにして、頭髪をかすめる違和感を解消
-  bossFireballs.push({ x, y, w, h, vx: boss.facing * 5, facing: boss.facing, life: 150, hit: false, high: isHigh });
+  bossFireballs.push({ x, y, w, h, vx: boss.facing * (boss.enraged ? 8 : 5), facing: boss.facing, life: 150, hit: false, high: isHigh }); // 覚醒後は飛行速度を強化
 }
 
 function updateBossFireballs() {
@@ -2725,10 +2756,12 @@ function updateHadoukens() {
       if (rectsOverlap(hd, bBox)) {
         boss.hp -= 18; // 通常パンチ(6)の3倍相当
         boss.hitCooldown = 12;
+        boss.knockbackVx = hd.facing * 4; // 雑魚敵と同様、波動拳ヒットで軽く後退させる
         hd.hitBoss = true;
         spawnImpactFlash(boss.x+boss.w/2, GROUND_Y-boss.h/2);
         sfx.bossHit();
         maybeSpawnHitText(boss.x+boss.w/2, GROUND_Y-boss.h-36);
+        maybeTriggerBossEnrage();
         if (boss.hp <= 0) {
           boss.dead = true; boss.deathTimer = 0; score += 1000;
           playBossDeadSfx();
@@ -3044,18 +3077,47 @@ function update() {
       const dist = Math.abs(dx);
       if (boss.hitCooldown > 0) boss.hitCooldown--;
       if (boss.specialCooldown > 0) boss.specialCooldown--;
+      if (boss.jumpAttackCooldown > 0) boss.jumpAttackCooldown--;
+      if (boss.spinAttackCooldown > 0) boss.spinAttackCooldown--;
 
       if (boss.hitCooldown > 0) {
         boss.vx = 0; // 被弾硬直中は行動できない(短時間のヒットストップ)
-      } else if (boss.state === 'special') {
-        // 必殺技(火球):予備動作(集気)→発動動作(気を放つ)を1~3回繰り返す→硬直の順に進行する
+        if (boss.knockbackVx) { // 波動拳ヒット時は雑魚敵と同様に軽く後退させる
+          boss.x += boss.knockbackVx;
+          boss.knockbackVx *= 0.88;
+          if (Math.abs(boss.knockbackVx) < 0.3) boss.knockbackVx = 0;
+        }
+      } else if (boss.state === 'enrageIntro') {
+        // 覚醒演出:必殺技の予備動作(集気)ポーズを流用しつつ、炎の粒子を身体の周囲に散らす。
+        // この演出中は攻撃も接近も行わず、終わったら通常の行動へ復帰する。
         boss.vx = 0;
+        boss.enrageIntroTimer--;
+        if (frame % 2 === 0) {
+          const px = boss.x + boss.w/2 + (Math.random()-0.5)*boss.w*1.3;
+          const py = GROUND_Y - boss.h*Math.random()*0.95;
+          spawnParticles(px, py, Math.random() < 0.5 ? '#ff6622' : '#ffcc55', 4, 6);
+        }
+        if (boss.enrageIntroTimer <= 0) {
+          boss.state = dist > 90 ? 'approach' : 'attack';
+        }
+      } else if (boss.state === 'special') {
+        // 必殺技(火球):後退ジャンプ(2歩)で間合いを取る→予備動作(集気)→発動動作(気を放つ)を1~3回繰り返す→硬直の順に進行する
         boss.specialTimer++;
         const shotsTotal = boss.specialShotsTotal || 1;
-        const HOLD_F1_END = 15, HOLD_END = 90;
+        const BACKSTEP_LEN = 30; // 集気に入る前に後退ジャンプ2回分の間合いを取る演出
+        const HOLD_F1_END = BACKSTEP_LEN + 15, HOLD_END = BACKSTEP_LEN + 90;
         const SHOT_LEN = 45; // 1回の発動動作(前進15+15+15)にかかるフレーム数
         const CAST_END = HOLD_END + SHOT_LEN * shotsTotal; // 全ての火球を撃ち終える時点
         const RECOVER_END = CAST_END + 30; // 最後の1回だけ収回動作(Frame2→Frame1)を行う
+        if (boss.specialTimer <= BACKSTEP_LEN) {
+          // 後退ジャンプ:sin波2周分でポン、ポンと2回跳ねながら下がる
+          boss.vx = -boss.facing * 2.2;
+          boss.walkFrame += 0.3;
+          boss.y = -Math.abs(Math.sin((boss.specialTimer / BACKSTEP_LEN) * Math.PI * 2)) * 16;
+        } else {
+          boss.vx = 0;
+          boss.y = 0;
+        }
         if (boss.specialTimer === 1) {
           spawnMangaText('危險!!', boss.x+boss.w/2, GROUND_Y-boss.h-45, true);
         }
@@ -3073,18 +3135,131 @@ function update() {
           boss.specialTimer = 0;
           boss.specialHit = false;
           boss.attackTimer = 0;
-          boss.specialCooldown = 300 + Math.random()*180; // 次の必殺技までの間隔(約5~8秒)
+          boss.y = 0;
+          // 次の必殺技までの間隔(通常は約5~8秒、覚醒後は約2~3.3秒に短縮)
+          boss.specialCooldown = boss.enraged ? (120 + Math.random()*80) : (300 + Math.random()*180);
+        }
+      } else if (boss.state === 'jumpAttack') {
+        // 跳躍攻撃:中間距離から大きく踏み込んでジャンプキックを繰り出す
+        boss.jumpAttackTimer++;
+        const AIR_LEN = 26; // 滞空(踏み込み)時間
+        const TOTAL_LEN = 42; // 着地硬直を含めた全体時間
+        if (boss.jumpAttackTimer <= AIR_LEN) {
+          boss.vx = boss.facing * (boss.enraged ? 5.2 : 4.2);
+          boss.y = -Math.sin((boss.jumpAttackTimer / AIR_LEN) * Math.PI) * 42;
+        } else {
+          boss.vx = 0;
+          boss.y = 0;
+        }
+        if (!boss.jumpAttackHit && boss.jumpAttackTimer === Math.round(AIR_LEN * 0.65)) {
+          const reach = 34; // 踏み込みが深い分、通常の近接攻撃より少し長めの判定にする
+          const bossAtkBox = { x: boss.facing===1 ? boss.x+boss.w : boss.x-reach, y: GROUND_Y-boss.h+10, w: reach, h: 46 };
+          const pBox = { x: player.x, y: GROUND_Y-player.h+15, w: player.w, h: 40 };
+          if (rectsOverlap(bossAtkBox, pBox) && player.invuln<=0 && !player.dead) {
+            player.hp -= Math.round(12 * diffSettings().bossDmgMul); player.invuln = 45; player.hitStun = 16; resetCombo(); sfx.hit();
+            spawnParticles(player.x+player.w/2, GROUND_Y-player.h/2, '#ff4444');
+          }
+          boss.jumpAttackHit = true;
+        }
+        if (boss.jumpAttackTimer > TOTAL_LEN) {
+          boss.state = dist > 90 ? 'approach' : 'attack';
+          boss.jumpAttackTimer = 0;
+          boss.jumpAttackHit = false;
+          boss.y = 0;
+          boss.jumpAttackCooldown = 240 + Math.random()*180; // 次の跳躍攻撃までの間隔(約4~7秒)
+        }
+      } else if (boss.state === 'spinAttack') {
+        // 旋轉攻撃:高速回転しながら突進し、命中した瞬間に斜め後方上空へ吹き飛ぶ。
+        // 空中にいる間は回転を続け、着地した瞬間にだけ停止する。
+        boss.spinAttackTimer++;
+        const DASH_LEN = 32; // 突進(回転)時間
+        if (!boss.spinAttackHit) {
+          if (boss.spinAttackTimer <= DASH_LEN) {
+            boss.vx = boss.facing * (boss.enraged ? 7.5 : 6);
+            boss.spinAngle += 0.9; // 高速回転
+            const reach = 26;
+            const bossAtkBox = { x: boss.facing===1 ? boss.x+boss.w-10 : boss.x-reach+10, y: GROUND_Y-boss.h+10, w: boss.w+reach, h: 50 };
+            const pBox = { x: player.x, y: GROUND_Y-player.h+15, w: player.w, h: 40 };
+            if (rectsOverlap(bossAtkBox, pBox) && player.invuln<=0 && !player.dead) {
+              player.hp -= Math.round(11 * diffSettings().bossDmgMul); player.invuln = 45; player.hitStun = 16; resetCombo(); sfx.hit();
+              spawnParticles(player.x+player.w/2, GROUND_Y-player.h/2, '#ff4444');
+              boss.spinAttackHit = true;
+              boss.spinReboundVx = -boss.facing * 7; // 命中の反作用力で斜め後方へ吹き飛ぶ(遠めに)
+              boss.spinReboundVy = -8; // 同時に斜め上方へ打ち上げる
+            }
+          } else {
+            // 空振りした場合は反動なしでそのまま止まって行動へ復帰する
+            boss.vx = 0;
+            if (boss.spinAttackTimer > DASH_LEN + 10) {
+              boss.state = dist > 90 ? 'approach' : 'attack';
+              boss.spinAttackTimer = 0;
+              boss.spinAngle = 0;
+              boss.spinAttackCooldown = 300 + Math.random()*200; // 次の旋轉攻撃までの間隔(約5~8.3秒)
+            }
+          }
+        } else {
+          // 命中後:重力で弧を描きながら吹き飛び、回転も継続する。着地した瞬間に全て停止する。
+          boss.vx = 0; // x移動はここで直接扱うため、通常のvx加算は無効化する
+          boss.spinReboundVy += 0.5; // 重力
+          boss.x += boss.spinReboundVx;
+          boss.y = Math.min(0, boss.y + boss.spinReboundVy);
+          boss.spinReboundVx *= 0.97; // 水平方向はゆっくり減衰させ、遠くまで飛ばす
+          boss.spinAngle += 0.9; // 着地するまで回転を続ける
+          if (boss.y >= 0 && boss.spinReboundVy > 0) {
+            // 着地:回転・移動ともに即座に停止する
+            boss.y = 0;
+            boss.state = dist > 90 ? 'approach' : 'attack';
+            boss.spinAttackTimer = 0;
+            boss.spinAttackHit = false;
+            boss.spinAngle = 0;
+            boss.spinReboundVx = 0;
+            boss.spinReboundVy = 0;
+            boss.spinAttackCooldown = 300 + Math.random()*200; // 次の旋轉攻撃までの間隔(約5~8.3秒)
+          }
         }
       } else if (dist > 72) {
-        boss.vx = boss.facing*1.1; boss.walkFrame += 0.15; boss.state='approach';
+        if (boss.moveQuirkTimer > 0) {
+          // 後退/一時停止の演出中:通常の追跡ロジックより優先する
+          boss.moveQuirkTimer--;
+          if (boss.moveQuirk === 'retreat') {
+            boss.vx = -boss.facing * 0.9; boss.walkFrame += 0.15; boss.state = 'approach';
+          } else {
+            boss.vx = 0; boss.state = 'idle';
+          }
+          if (boss.moveQuirkTimer <= 0) boss.moveQuirk = null;
+        } else {
+          boss.vx = boss.facing*(boss.enraged ? 1.6 : 1.1); boss.walkFrame += 0.15; boss.state='approach';
+          // 単調にずっと追いかけるだけにならないよう、覚醒前はまれに後退/一時停止を挟む(覚醒後は攻勢一辺倒にする)
+          if (!boss.enraged && Math.random() < 0.006) {
+            boss.moveQuirk = Math.random() < 0.5 ? 'retreat' : 'pause';
+            boss.moveQuirkTimer = boss.moveQuirk === 'pause' ? (30 + Math.random()*30) : (20 + Math.random()*20);
+          }
+        }
         // 接近中、間合いがある時ほど必殺技(噴火)をランダムに発動しやすくする
         if (boss.specialCooldown <= 0 && dist < 420 && Math.random() < 0.012) {
           boss.state = 'special'; boss.specialTimer = 0; boss.specialHit = false; boss.vx = 0;
           boss.specialShotsTotal = 1 + Math.floor(Math.random()*3); // 今回の必殺技で発射する火球の回数(1~3回ランダム)
+          boss.moveQuirkTimer = 0; boss.moveQuirk = null; // 必殺技が割り込んだら後退/停止の演出は打ち切る
+        } else if (boss.jumpAttackCooldown <= 0 && dist > 110 && dist < 300 && Math.random() < 0.01) {
+          // 中間距離から一気に踏み込むジャンプキック
+          boss.state = 'jumpAttack'; boss.jumpAttackTimer = 0; boss.jumpAttackHit = false; boss.vx = 0; boss.y = 0;
+          boss.moveQuirkTimer = 0; boss.moveQuirk = null;
+        } else if (boss.spinAttackCooldown <= 0 && dist > 150 && dist < 380 && Math.random() < 0.008) {
+          // やや長い間合いから高速回転しながら突進する
+          boss.state = 'spinAttack'; boss.spinAttackTimer = 0; boss.spinAttackHit = false;
+          boss.spinAngle = 0; boss.spinReboundVx = 0; boss.vx = 0;
+          boss.moveQuirkTimer = 0; boss.moveQuirk = null;
         }
       } else {
+        const enteringAttack = boss.state !== 'attack'; // 攻撃サイクルの開始時(新規/前回サイクル終了直後)だけパターンを選び直す
         boss.vx = 0; boss.state = 'attack'; boss.attackTimer++;
-        if (boss.attackTimer === 35) {
+        if (enteringAttack) {
+          boss.attackVariant = Math.random() < 0.5 ? 0 : 1; // 0=連打からの踢腿、1=素早い突き(パターンを固定させない)
+        }
+        const isQuickPunch = boss.attackVariant === 1;
+        const hitFrame = isQuickPunch ? 18 : 35; // クイックパンチは判定が早く来る分、覚えにくくなる
+        const cycleLen = isQuickPunch ? 45 : 65;
+        if (boss.attackTimer === hitFrame) {
           const reach = 28; // 実際に拳/脚が届く範囲に合わせた近接判定(体格に対して過大だった距離判定を修正)
           const bossAtkBox = { x: boss.facing===1 ? boss.x+boss.w : boss.x-reach, y: GROUND_Y-boss.h+15, w: reach, h: 40 };
           const pBox = { x: player.x, y: GROUND_Y-player.h+15, w: player.w, h: 40 };
@@ -3093,7 +3268,10 @@ function update() {
             spawnParticles(player.x+player.w/2, GROUND_Y-player.h/2, '#ff4444');
           }
         }
-        if (boss.attackTimer > 65) boss.attackTimer = 0;
+        if (boss.attackTimer > cycleLen) {
+          boss.attackTimer = 0;
+          boss.attackVariant = Math.random() < 0.5 ? 0 : 1; // 次のサイクルも改めてランダムに選ぶ
+        }
         // 近距離でもまれに必殺技を織り交ぜる
         if (boss.specialCooldown <= 0 && Math.random() < 0.004) {
           boss.state = 'special'; boss.specialTimer = 0; boss.specialHit = false; boss.attackTimer = 0; boss.vx = 0;
@@ -3108,6 +3286,7 @@ function update() {
           spawnParticles(boss.x+boss.w/2, GROUND_Y-boss.h/2, '#ffcc00');
           sfx.bossHit();
           maybeSpawnHitText(boss.x+boss.w/2, GROUND_Y-boss.h-36);
+          maybeTriggerBossEnrage();
           if (boss.hp <= 0) {
             boss.dead = true; boss.deathTimer = 0; score += 1000;
             playBossDeadSfx();
@@ -3115,7 +3294,13 @@ function update() {
           }
         }
       }
+    } else if (boss.y < 0) {
+      // 空中(ジャンプ攻撃中など)で倒された場合、宙に浮いたまま死亡演出に入らないよう、
+      // 着地するまでは重力で落下させるだけにして死亡タイマーは進めない
+      boss.deathFallVy += 2.2;
+      boss.y = Math.min(0, boss.y + boss.deathFallVy);
     } else {
+      boss.y = 0;
       boss.deathTimer++;
       if (boss.deathTimer > 50 && state === 'playing') {
         state = 'victoryDemo'; demoTimer = 0; stopGameMusic(); stopBossMusic(); hadoukens = []; bossFireballs = []; playFxEnding();
@@ -3259,8 +3444,8 @@ function drawHeartParticles() {
   });
 }
 
-function spawnParticles(x, y, color) {
-  for (let i=0;i<6;i++) particles.push({ x, y, vx:(Math.random()-0.5)*4, vy:-Math.random()*3, life:20, color });
+function spawnParticles(x, y, color, count = 6, size = 3) {
+  for (let i=0;i<count;i++) particles.push({ x, y, vx:(Math.random()-0.5)*4, vy:-Math.random()*3, life:20, color, size });
 }
 
 let impactFlashes = []; // 波動拳の命中演出(拡散するリング状の光)用
@@ -3616,13 +3801,28 @@ function drawBossSprite(bossObj) {
     // 被弾硬直中は専用のヒットリアクション画像を表示
     img = bossSprites['hit'];
     sizeAdjust = 1.05;
+  } else if (bossObj.state === 'enrageIntro') {
+    // 覚醒演出:必殺技の予備動作(集気)ポーズを流用する
+    const elapsed = 90 - bossObj.enrageIntroTimer;
+    if (elapsed < 15) { img = bossSprites['hold1']; sizeAdjust = 1.15; }
+    else { img = (Math.floor(frame/8)%2===0) ? bossSprites['hold2'] : bossSprites['hold3']; sizeAdjust = 1.15; }
   } else if (bossObj.state === 'special') {
-    // 必殺技(火球):予備動作(集気)→発動動作(前進)を1~3回繰り返す→最後に発動動作(後退)の順にポーズを切り替える
+    // 必殺技(火球):後退ジャンプ(2歩)→予備動作(集気)→発動動作(前進)を1~3回繰り返す→最後に発動動作(後退)の順にポーズを切り替える
     const t = bossObj.specialTimer;
     const shotsTotal = bossObj.specialShotsTotal || 1;
-    const HOLD_END = 90, SHOT_LEN = 45;
+    const BACKSTEP_LEN = 30;
+    const HOLD_END = BACKSTEP_LEN + 90, SHOT_LEN = 45;
     const CAST_END = HOLD_END + SHOT_LEN * shotsTotal;
-    if (t < 15) { img = bossSprites['hold1']; sizeAdjust = 1.15; }
+    if (t <= BACKSTEP_LEN) {
+      // 後退ジャンプ中:歩行モーションを流用して跳ねながら下がる足運びを表現
+      const walkPhase = ((bossObj.walkFrame % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+      if (walkPhase < Math.PI*0.5) img = bossSprites['walk1'];
+      else if (walkPhase < Math.PI) img = bossSprites['walk3'];
+      else if (walkPhase < Math.PI*1.5) img = bossSprites['walk2'];
+      else img = bossSprites['walk3'];
+      sizeAdjust = 1.4;
+    }
+    else if (t < BACKSTEP_LEN + 15) { img = bossSprites['hold1']; sizeAdjust = 1.15; }
     else if (t < HOLD_END) { img = (Math.floor(t/8)%2===0) ? bossSprites['hold2'] : bossSprites['hold3']; sizeAdjust = 1.15; }
     else if (t < CAST_END) {
       // 発動サイクル(前進のみ)をshotsTotal回繰り返す
@@ -3634,11 +3834,31 @@ function drawBossSprite(bossObj) {
     }
     else if (t < CAST_END + 15) { img = bossSprites['cast2']; sizeAdjust = 1.05; } // 最後の1回だけ収回動作
     else { img = bossSprites['cast1']; sizeAdjust = 1.05; }
+  } else if (bossObj.state === 'jumpAttack') {
+    // 跳躍攻撃:滞空中はジャンプキック専用イラスト、着地硬直はキック収回ポーズを流用
+    img = bossObj.jumpAttackTimer <= 26 ? bossSprites['jumpKick'] : bossSprites['kickBack'];
+    sizeAdjust = 1.25;
+  } else if (bossObj.state === 'spinAttack') {
+    // 旋轉攻撃:丸まった専用イラストを回転させる(sway に回転角を流用)
+    img = bossSprites['spin'];
+    sizeAdjust = 1.05;
+    sway = bossObj.spinAngle;
   } else if (bossObj.state === 'attack') {
-    // 近接攻撃:予備動作は連続ジャブ、20〜39は踢腿(キック)、40以降は踢腿収回(回復動作)
-    if (bossObj.attackTimer >= 40) { img = bossSprites['kickBack']; sizeAdjust = 1.2; }
-    else if (bossObj.attackTimer >= 20) { img = bossSprites['kickOut']; sizeAdjust = 1.2; }
-    else { img = (Math.floor(frame/14)%2===0) ? bossSprites['punchOut'] : bossSprites['punchBack']; sizeAdjust = 1.15; }
+    if (bossObj.attackVariant === 1) {
+      // クイックパンチ:構え→即座に突き出す→収回、キックより短く速いリズムにする
+      if (bossObj.attackTimer >= 24) { img = bossSprites['punchBack']; sizeAdjust = 1.15; }
+      else if (bossObj.attackTimer >= 10) { img = bossSprites['punchOut']; sizeAdjust = 1.2; }
+      else { img = bossSprites['punchBack']; sizeAdjust = 1.1; }
+    } else {
+      // 近接攻撃(標準):予備動作は連続ジャブ、20〜39は踢腿(キック)、40以降は踢腿収回(回復動作)
+      if (bossObj.attackTimer >= 40) { img = bossSprites['kickBack']; sizeAdjust = 1.2; }
+      else if (bossObj.attackTimer >= 20) { img = bossSprites['kickOut']; sizeAdjust = 1.2; }
+      else { img = (Math.floor(frame/14)%2===0) ? bossSprites['punchOut'] : bossSprites['punchBack']; sizeAdjust = 1.15; }
+    }
+  } else if (bossObj.state === 'idle') {
+    // 追跡の合間に一時停止する演出:専用の立ちポーズは使わず、パンチ収回ポーズを静止姿として流用する
+    img = bossSprites['punchBack'];
+    sizeAdjust = 1.15;
   } else {
     // 3コマ(左足前→中間→右足前→中間)でなめらかに循環させる。中間を2回使うことで自然な歩行に見せる。
     const walkPhase = ((bossObj.walkFrame % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
@@ -3658,16 +3878,23 @@ function drawBossSprite(bossObj) {
   const naturalW = img.naturalWidth || img.width;
   const naturalH = img.naturalHeight || img.height;
   const scaleMul = 1.35;
-  const dispH = bossObj.dead ? bossObj.h * 0.85 * scaleMul : bossObj.h * scaleMul * sizeAdjust;
+  const dispH = bossObj.dead ? bossObj.h * 0.7 * scaleMul : bossObj.h * scaleMul * sizeAdjust; // 倒れ絵は横長素材のため、他ポーズと視覚的な大きさを揃えるよう縮小補正
   const dispW = dispH * naturalW / naturalH;
   const deadYOffset = bossObj.dead ? 8 : 0; // 倒れ絵を確実に地面へ接地させるための微調整
 
   ctx.save();
   if (!bossObj.dead && bossObj.hitCooldown > 6) ctx.globalAlpha = 0.5 + Math.sin(frame*0.8)*0.3;
-  ctx.translate(centerX, baseY + bob + deadYOffset);
-  ctx.rotate(sway);
-  ctx.scale(-bossObj.facing, 1); // 素材は左向きのイラストのため、進行方向に合わせて反転させる
-  ctx.drawImage(img, -dispW/2, -dispH, dispW, dispH);
+  if (bossObj.state === 'spinAttack') {
+    // 丸まったポーズのため、足元ではなく胴体中心を軸に回転させる(向き反転は行わない=素材が円形で不要)
+    ctx.translate(centerX, baseY - dispH/2);
+    ctx.rotate(sway);
+    ctx.drawImage(img, -dispW/2, -dispH/2, dispW, dispH);
+  } else {
+    ctx.translate(centerX, baseY + bob + deadYOffset);
+    ctx.rotate(sway);
+    ctx.scale(-bossObj.facing, 1); // 素材は左向きのイラストのため、進行方向に合わせて反転させる
+    ctx.drawImage(img, -dispW/2, -dispH, dispW, dispH);
+  }
   ctx.restore();
 }
 
@@ -4191,7 +4418,7 @@ function drawInner() {
   drawBossFireballs();
   drawImpactFlashes();
 
-  particles.forEach(p => rect(p.x-camX, p.y, 3, 3, p.color));
+  particles.forEach(p => { const s = p.size || 3; rect(p.x-camX, p.y, s, s, p.color); });
   drawMangaTexts();
   drawForegroundBushes();
 
