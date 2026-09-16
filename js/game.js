@@ -2601,7 +2601,7 @@ function spawnBoss(x) {
     specialTimer:0, specialCooldown:180, specialHit:false, specialShotsTotal:1, enraged:false,
     moveQuirk:null, moveQuirkTimer:0, enrageIntroTimer:0,
     jumpAttackTimer:0, jumpAttackCooldown:150, jumpAttackHit:false, deathFallVy:0,
-    spinAttackTimer:0, spinAttackCooldown:240, spinAttackHit:false, spinAngle:0, spinReboundVx:0, spinReboundVy:0,
+    spinAttackTimer:0, spinAttackCooldown:240, spinAttackHit:false, spinAngle:0, spinReboundVx:0, spinReboundVy:0, spinDashFacing:1,
     jumpOverTimer:0, jumpOverCooldown:200, jumpOverStartX:0, jumpOverTargetX:0, hitFallVy:0 };
 }
 
@@ -3243,36 +3243,38 @@ function update() {
           boss.jumpAttackCooldown = (240 + Math.random()*180) * diffSettings().bossMoveCooldownMul; // 次の跳躍攻撃までの間隔
         }
       } else if (boss.state === 'spinAttack') {
-        // 旋轉攻撃:予備動作(原地回転→溜め静止)を経てから高速回転で突進し、命中した瞬間に斜め後方上空へ吹き飛ぶ。
-        // 空中にいる間は回転を続け、着地した瞬間にだけ停止する。
+        // 旋轉攻撃:原地回転で予備動作を見せてから、プレイヤーに向かって回転しながら突進し続ける。
+        // 命中した瞬間に斜め後方上空へ吹き飛ぶ。命中しないまま画面端まで達したら、そこで停止して通常行動へ復帰する。
         boss.spinAttackTimer++;
         const WINDUP_SPIN_LEN = 60; // 原地で回転しながら予備動作(約1秒)
-        const WINDUP_PAUSE_LEN = 30; // 回転を止めて一瞬溜める(約0.5秒、発動を予告する)
-        const WINDUP_END = WINDUP_SPIN_LEN + WINDUP_PAUSE_LEN;
-        const DASH_LEN = 32; // 突進(回転)時間
         if (!boss.spinAttackHit) {
           if (boss.spinAttackTimer <= WINDUP_SPIN_LEN) {
             // 原地回転:まだ突進しない
             boss.vx = 0;
             boss.spinAngle += 0.7;
-          } else if (boss.spinAttackTimer <= WINDUP_END) {
-            // 回転を止めて一瞬静止(発動直前の溜め)
-            boss.vx = 0;
-          } else if (boss.spinAttackTimer <= WINDUP_END + DASH_LEN) {
-            boss.vx = boss.facing * (boss.enraged ? 7.5 : 6);
+          } else {
+            // 突進フェーズ:予備動作が終わった瞬間にプレイヤーへ向けて狙いを定め、その方向へ直進し続ける
+            // (毎フレームのboss.facingをそのまま使うと、本体がプレイヤーの座標を通過した瞬間に
+            //  左右反転してしまい、その場で往復し続ける不具合があったため、発動時点の向きに固定する)
+            if (boss.spinAttackTimer === WINDUP_SPIN_LEN + 1) boss.spinDashFacing = boss.facing;
+            const dashFacing = boss.spinDashFacing;
+            const speed = boss.enraged ? 7.5 : 6;
+            boss.vx = dashFacing * speed;
             boss.spinAngle += 0.9; // 高速回転
             const reach = 26;
             // 修正前は判定幅がboss.w+reachでかつ本体の内側10pxから始まっていたため、
             // 見た目より遠くまで(前方に最大76px)判定が届いてしまっていた。
             // 本体の幅ぶんはそのままに、前方への食い込みはreach分だけに抑える。
-            const bossAtkBox = { x: boss.facing===1 ? boss.x : boss.x-reach, y: GROUND_Y-boss.h+10, w: boss.w+reach, h: 50 };
-            const pBox = { x: player.x, y: GROUND_Y-player.h+15, w: player.w, h: 40 };
+            const bossAtkBox = { x: dashFacing===1 ? boss.x : boss.x-reach, y: GROUND_Y-boss.h+10, w: boss.w+reach, h: 50 };
+            // player.yを考慮し、ジャンプで上へ避けられるようにする(通常判定はしゃがみ調整なし)
+            const pBox = { x: player.x, y: GROUND_Y + player.y - player.h + 15, w: player.w, h: 40 };
             const facingBoss = (boss.x >= player.x && player.facing === 1) || (boss.x < player.x && player.facing === -1);
+            let resolved = false;
             if (rectsOverlap(bossAtkBox, pBox) && player.parryTimer > 0 && facingBoss) {
               // 格擋成功:突進を強制的に中断し、通常の被弾リアクション(hitCooldown)へ移行させて強めに弾き返す
               boss.hp -= 20; // 火球反射と同等(「2格」相当)のダメージ
               boss.hitCooldown = 20;
-              boss.knockbackVx = -boss.facing * 10; // 通常の波動拳ヒットより強めに弾き返す
+              boss.knockbackVx = -dashFacing * 10; // 通常の波動拳ヒットより強めに弾き返す
               boss.vx = 0;
               boss.spinAttackHit = false;
               boss.spinAttackTimer = 0;
@@ -3290,21 +3292,28 @@ function update() {
                 playBossDeadSfx();
                 spawnMangaText('轟!!', boss.x+boss.w/2, GROUND_Y-boss.h-45, true);
               }
+              resolved = true;
             } else if (rectsOverlap(bossAtkBox, pBox) && player.invuln<=0 && !player.dead) {
               player.hp -= Math.round(11 * diffSettings().bossDmgMul); player.invuln = 45; player.hitStun = 16; resetCombo(); sfx.hit();
               spawnParticles(player.x+player.w/2, GROUND_Y-player.h/2, '#ff4444');
               boss.spinAttackHit = true;
-              boss.spinReboundVx = -boss.facing * 7; // 命中の反作用力で斜め後方へ吹き飛ぶ(遠めに)
+              boss.spinReboundVx = -dashFacing * 7; // 命中の反作用力で斜め後方へ吹き飛ぶ(遠めに)
               boss.spinReboundVy = -8; // 同時に斜め上方へ打ち上げる
+              resolved = true;
             }
-          } else {
-            // 空振りした場合は反動なしでそのまま止まって行動へ復帰する
-            boss.vx = 0;
-            if (boss.spinAttackTimer > WINDUP_END + DASH_LEN + 10) {
-              boss.state = dist > 90 ? 'approach' : 'attack';
-              boss.spinAttackTimer = 0;
-              boss.spinAngle = 0;
-              boss.spinAttackCooldown = (300 + Math.random()*200) * diffSettings().bossMoveCooldownMul; // 次の旋轉攻撃までの間隔(約5~8.3秒)
+            if (!resolved) {
+              const nextX = boss.x + boss.vx;
+              const atLeftEdge = dashFacing === -1 && nextX <= camX + 10;
+              const atRightEdge = dashFacing === 1 && nextX >= camX + W - boss.w - 10;
+              if (atLeftEdge || atRightEdge) {
+                // プレイヤーに当たらず画面端まで到達:そこで停止して通常行動へ復帰する
+                boss.vx = 0;
+                boss.x = atLeftEdge ? camX + 10 : camX + W - boss.w - 10;
+                boss.state = dist > 90 ? 'approach' : 'attack';
+                boss.spinAttackTimer = 0;
+                boss.spinAngle = 0;
+                boss.spinAttackCooldown = (300 + Math.random()*200) * diffSettings().bossMoveCooldownMul; // 次の旋轉攻撃までの間隔(約5~8.3秒)
+              }
             }
           }
         } else {
