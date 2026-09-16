@@ -1527,6 +1527,7 @@ function pauseBack() {
 }
 
 window.addEventListener('keydown', e => {
+  if (!assetsReady()) return; // 素材の讀取が完了するまでは入力を一切受け付けない
   if (e.repeat) return; // キー長押しによるOSのオートリピートは無視する(名前入力等への意図しない連続入力を防ぐ)
   if (controlModeOverride === 'auto' && lastInputDevice !== 'keyboard') {
     lastInputDevice = 'keyboard';
@@ -1630,8 +1631,9 @@ window.addEventListener('keyup', e => {
   if (GAMEPLAY_KEY_ALIAS[e.code]) keys[GAMEPLAY_KEY_ALIAS[e.code]] = false;
   else if (!OLD_GAMEPLAY_CODES.includes(e.code)) keys[e.code] = false;
 });
-canvas.addEventListener('click', () => { initAudio(); if (state === 'start' && !titleConfirming) playChinaMusic(); });
+canvas.addEventListener('click', () => { if (!assetsReady()) return; initAudio(); if (state === 'start' && !titleConfirming) playChinaMusic(); });
 function tryAutoStartMusic() {
+  if (!assetsReady()) { setTimeout(tryAutoStartMusic, 200); return; } // 讀取完了まで再試行し続ける
   initAudio();
   const go = () => { if (state === 'start' && !titleConfirming) playChinaMusic(); };
   if (actx.state === 'suspended') actx.resume().then(go).catch(() => {});
@@ -5412,7 +5414,7 @@ function touchActionPress(role, pressed) {
 
 function bindTouchButton(el, onPress) {
   if (!el) return;
-  const start = e => { e.preventDefault(); initAudio(); onPress(true); el.classList.add('pressed'); };
+  const start = e => { e.preventDefault(); if (!assetsReady()) return; initAudio(); onPress(true); el.classList.add('pressed'); };
   const end = e => { e.preventDefault(); onPress(false); el.classList.remove('pressed'); };
   el.addEventListener('pointerdown', start);
   el.addEventListener('pointerup', end);
@@ -5542,11 +5544,13 @@ setupTouchControls();
 function loop() {
   frame++;
   try {
-    // 自動再生がブロックされた場合の保険:タイトル画面表示中は毎フレーム再生を試みる
-    if (state === 'start' && !titleConfirming && titleThemeAudio.paused) playChinaMusic();
-    pollGamepad();
-    update();
-    draw();
+    if (assetsReady()) {
+      // 自動再生がブロックされた場合の保険:タイトル画面表示中は毎フレーム再生を試みる
+      if (state === 'start' && !titleConfirming && titleThemeAudio.paused) playChinaMusic();
+      pollGamepad();
+      update();
+    }
+    draw(); // draw() 自体は讀取中でも呼び続ける(内部で讀取畫面を表示するため)
   } catch (err) {
     // 何らかの予期しないエラーが発生しても、ループ自体は止めずに継続する
     // (エラー発生時にゲーム全体が無反応になってしまうのを防ぐため)
