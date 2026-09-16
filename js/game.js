@@ -4018,11 +4018,12 @@ function draw() {
   drawInner();
   if (!assetsReady()) drawLoadingOverlay();
 }
-// 讀取中の場合、既存の描画ロジックを一切変更せず、その上に半透明の讀取畫面を重ねて表示する
+// 讀取中の場合、既存の描画ロジックを一切変更せず、その上に讀取畫面を重ねて表示する
+// (素材が読み込み途中でチグハグな見た目になった背景が透けて見えないよう、不透明で完全に覆う)
 function drawLoadingOverlay() {
   const pct = assetLoadTotal > 0 ? Math.min(100, Math.round(100 * assetLoadDone / assetLoadTotal)) : 0;
   ctx.save();
-  ctx.fillStyle = 'rgba(8,6,4,0.72)';
+  ctx.fillStyle = '#101018';
   ctx.fillRect(0, 0, W, H);
   ctx.textAlign = 'center';
   ctx.font = 'bold 20px monospace';
