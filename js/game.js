@@ -153,6 +153,21 @@ const lifeIconImg = new Image();
 let lifeIconImgLoaded = false;
 lifeIconImg.onload = () => { lifeIconImgLoaded = true; };
 lifeIconImg.src = 'images/lifeIconImg.png';
+// 背景に埋もれて見えづらいとの要望により、アイコンの縁取り用に白いシルエット版を1度だけ生成してキャッシュする
+let lifeIconSilhouette = null;
+function getLifeIconSilhouette() {
+  if (lifeIconSilhouette || !lifeIconImgLoaded) return lifeIconSilhouette;
+  const w = lifeIconImg.naturalWidth, h = lifeIconImg.naturalHeight;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cctx = c.getContext('2d');
+  cctx.drawImage(lifeIconImg, 0, 0, w, h);
+  cctx.globalCompositeOperation = 'source-in';
+  cctx.fillStyle = '#ffffff';
+  cctx.fillRect(0, 0, w, h);
+  lifeIconSilhouette = c;
+  return c;
+}
 
 // 波動拳(チャージ攻撃)用イラスト:溜めポーズ(hado1)・発射ポーズ(hado2)・飛行道具(wave)
 const spriteHado1 = new Image();
@@ -1081,7 +1096,8 @@ function nameEntryStepBack() {
 }
 
 async function submitNameEntry() {
-  const name = nameEntryChars.join('');
+  let name = nameEntryChars.join('');
+  if (!name.trim()) name = 'UNKN'; // 何も入力せず送信した場合は既定の名前にする
   const lbKey = gameMode === 'dojo' ? 'dojo' : difficulty; // 武道場モードは専用のランキング区分に記録する
   leaderboardViewDiff = lbKey; // 今回プレイしたモード/難易度のタブを表示する
   leaderboardFromMenu = false;
@@ -4667,8 +4683,15 @@ function drawHUD() {
   // アイコンは予備の(lives-1)機分だけ表示する(現在の1機は既にプレイヤーとして画面に出ているため)
   if (lifeIconImgLoaded) {
     const iconH = 55, iconW = iconH * (lifeIconImg.naturalWidth / lifeIconImg.naturalHeight);
+    const silhouette = getLifeIconSilhouette();
+    const outlineT = 1; // 白縁の太さ(px)
+    const outlineOffsets = [[-outlineT,0],[outlineT,0],[0,-outlineT],[0,outlineT],[-outlineT,-outlineT],[outlineT,-outlineT],[-outlineT,outlineT],[outlineT,outlineT]];
     for (let i=0;i<lives-1;i++) {
-      ctx.drawImage(lifeIconImg, W-10-iconW-(i*(iconW+6)), 4, iconW, iconH);
+      const ix = W-10-iconW-(i*(iconW+6)), iy = 4;
+      if (silhouette) {
+        outlineOffsets.forEach(([dx,dy]) => ctx.drawImage(silhouette, ix+dx, iy+dy, iconW, iconH));
+      }
+      ctx.drawImage(lifeIconImg, ix, iy, iconW, iconH);
     }
   } else {
     for (let i=0;i<lives-1;i++) { rect(W-20-i*18, 10, 10, 14, '#ffdddd'); rect(W-20-i*18, 8, 10, 4, PAL.hair); }
@@ -5858,22 +5881,26 @@ function setupVirtualStick() {
 
   function maxRadius() { return stick.getBoundingClientRect().width * 0.28; }
 
-  let stickPrevLeft = false, stickPrevRight = false, stickPrevDown = false; // 前回の方向状態(edge検出用)
+  let stickPrevLeft = false, stickPrevRight = false, stickPrevDown = false, stickPrevUp = false; // 前回の方向状態(edge検出用)
   function updateDirection(dx, dy, radius) {
     const threshold = 0.35; // 中心からの距離がこの割合を超えたら方向入力とみなす
     const nx = dx / radius, ny = dy / radius;
     const mag = Math.min(1, Math.hypot(nx, ny));
-    let left = false, right = false, down = false;
+    let left = false, right = false, down = false, up = false;
     if (mag > threshold) {
       if (Math.abs(nx) > Math.abs(ny)) { if (nx > 0) right = true; else left = true; }
-      else if (ny > 0) { down = true; } // 上方向はここでは無視する(ジャンプは専用ボタン)
+      else if (ny > 0) { down = true; }
+      // 上方向:プレイ中はジャンプ専用ボタンに任せるため無視するが(誤跳躍防止)、
+      // メニュー・排行榜簽名などの画面では選択操作として使えないと上へカーソルを動かせなくなるため有効にする
+      else if (state !== 'playing') { up = true; }
     }
     // pointermoveは1秒間に何度も発火するため、状態が実際に変化した時だけtouchDpadPressを呼ぶ
     // (メニュー画面などで押しっぱなし扱いになり、選択が異常な速さで進んでしまうのを防ぐ)
     if (left !== stickPrevLeft) touchDpadPress('left', left);
     if (right !== stickPrevRight) touchDpadPress('right', right);
     if (down !== stickPrevDown) touchDpadPress('down', down);
-    stickPrevLeft = left; stickPrevRight = right; stickPrevDown = down;
+    if (up !== stickPrevUp) touchDpadPress('up', up);
+    stickPrevLeft = left; stickPrevRight = right; stickPrevDown = down; stickPrevUp = up;
   }
 
   function start(e) {
@@ -5904,7 +5931,8 @@ function setupVirtualStick() {
     touchDpadPress('left', false);
     touchDpadPress('right', false);
     touchDpadPress('down', false);
-    stickPrevLeft = false; stickPrevRight = false; stickPrevDown = false;
+    touchDpadPress('up', false);
+    stickPrevLeft = false; stickPrevRight = false; stickPrevDown = false; stickPrevUp = false;
   }
   stick.addEventListener('pointerdown', start);
   stick.addEventListener('pointermove', move);
