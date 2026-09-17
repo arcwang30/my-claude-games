@@ -5803,6 +5803,11 @@ function touchDpadPress(dir, pressed) {
     else if (dir === 'down') leaderboardSwitchPage(1);
     return;
   }
+  if (state === 'postGameChoice') {
+    if (!pressed) return;
+    if (dir === 'up' || dir === 'down') { postGameChoiceIndex = 1 - postGameChoiceIndex; playMenuMoveSfx(); }
+    return;
+  }
   // ゲームプレイ中はキーボードの方向キーと同じ扱いにする
   const map = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
   keys[map[dir]] = pressed;
