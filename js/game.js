@@ -778,7 +778,7 @@ function stopOpeningMusic() {
 }
 
 // 「Kungfu Start」効果音(主人公の入場演出用、1回再生)
-const kungfuStartAudio = new Audio('audio/kungfuStartAudio.mp3');
+const kungfuStartAudio = new Audio('audio/kungfuStartAudio.wav');
 kungfuStartAudio.loop = false;
 kungfuStartAudio.preload = 'auto';
 kungfuStartAudio.volume = 0.8;
