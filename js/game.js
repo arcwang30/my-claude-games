@@ -2261,7 +2261,7 @@ let currentLang = 'zh';
 const STR = {
   zh: {
     menuStart: '開始遊戲', menuSettings: '設定', menuHelp: '操作說明', menuLang: '語言', menuLeaderboard: '排行榜', menuCredit: 'CREDIT', menuHistory: '了解歷史', historyScrollHint: '捲動',
-    historyArticleTimeline: '橫捲軸遊戲發展史', historyArticleConcept: '概念與結構組成', historyArticleAbout: '關於Arc概遊庫', historyAboutFanPage: '前往粉絲團',
+    historyArticleTimeline: '橫捲軸遊戲發展史', historyArticleConcept: '概念與結構組成', historyArticleAbout: '關於Arc概遊庫', historyAboutFanPage: '前往粉絲團', landscapeHint: '橫握手機,畫面會更大',
     nameEntryTitle: '姓名', nameEntryConfirmAgain: '請再按%s次確認送出',
     nameEntryHint: '↑↓選字(手把)　Enter/A:確定此字(空白則為-)　Backspace/B:退回一格', nameEntryHint1: '按字母鍵輸入(最多4個字元)', nameEntryHint2: 'Enter確定(留空亦可送出)',
     leaderboardTitle: '排行榜', leaderboardEmpty: '尚無紀錄', leaderboardSwitch: '切換難度', leaderboardPageSwitch: '換頁', leaderboardLoading: '讀取中',
@@ -2304,7 +2304,7 @@ const STR = {
   },
   ja: {
     menuStart: 'ゲーム開始', menuSettings: '設定', menuHelp: '操作説明', menuLang: '言語', menuLeaderboard: 'ランキング', menuCredit: 'CREDIT', menuHistory: '歴史を知る', historyScrollHint: 'スクロール',
-    historyArticleTimeline: '横スクロールゲームの歴史', historyArticleConcept: '概念と構成要素', historyArticleAbout: 'ARCの概遊庫について', historyAboutFanPage: 'ファンページへ',
+    historyArticleTimeline: '横スクロールゲームの歴史', historyArticleConcept: '概念と構成要素', historyArticleAbout: 'ARCの概遊庫について', historyAboutFanPage: 'ファンページへ', landscapeHint: 'スマホを横向きにすると画面が大きくなります',
     nameEntryTitle: '名前', nameEntryConfirmAgain: 'あと%s回押すと送信されます',
     nameEntryHint: '↑↓文字選択(パッド)　Enter/A:確定(空欄は-)　Backspace/B:戻る', nameEntryHint1: '文字キーで入力(最大4文字)', nameEntryHint2: 'Enterで決定(空欄のまま送信も可)',
     leaderboardTitle: 'ランキング', leaderboardEmpty: '記録はまだありません', leaderboardSwitch: '難易度切替', leaderboardPageSwitch: 'ページ切替', leaderboardLoading: '読み込み中',
@@ -2347,7 +2347,7 @@ const STR = {
   },
   en: {
     menuStart: 'Start Game', menuSettings: 'Settings', menuHelp: 'How to Play', menuLang: 'Language', menuLeaderboard: 'Leaderboard', menuCredit: 'CREDIT', menuHistory: 'Learn about history', historyScrollHint: 'Scroll',
-    historyArticleTimeline: 'History of Side-Scrollers', historyArticleConcept: 'Concepts & Structure', historyArticleAbout: "About Arc's Game Archive", historyAboutFanPage: 'Visit Fan Page',
+    historyArticleTimeline: 'History of Side-Scrollers', historyArticleConcept: 'Concepts & Structure', historyArticleAbout: "About Arc's Game Archive", historyAboutFanPage: 'Visit Fan Page', landscapeHint: 'Rotate to landscape for a bigger view',
     nameEntryTitle: 'Name', nameEntryConfirmAgain: 'Press %s more time(s) to confirm',
     nameEntryHint: 'Up/Down: pick letter (pad)   Enter/A: Confirm (blank = -)   Backspace/B: Go back', nameEntryHint1: 'Type letter keys (up to 4 chars)', nameEntryHint2: 'Enter to confirm (blank is OK too)',
     leaderboardTitle: 'Leaderboard', leaderboardEmpty: 'No records yet', leaderboardSwitch: 'Switch difficulty', leaderboardPageSwitch: 'Page', leaderboardLoading: 'Loading',
@@ -5973,19 +5973,75 @@ function setupTouchControls() {
   function fitMobileScreen() {
     const gameWrap = document.getElementById('gameWrap');
     if (!gameWrap) return;
-    gameWrap.style.transform = 'scale(1)';
-    const rect = gameWrap.getBoundingClientRect();
-    const availW = window.innerWidth * 0.96;
-    const availH = window.innerHeight * 0.6; // 下部のバーチャルボタン分を確保
-    const factor = Math.min(1, availW / rect.width, availH / rect.height);
-    gameWrap.style.transform = `scale(${factor})`;
-    gameWrap.style.transformOrigin = 'top center';
+    const landscape = window.innerWidth > window.innerHeight;
+    document.documentElement.classList.toggle('landscape', landscape);
+    if (landscape) {
+      // 横持ち:下部にボタン用の余白を取らず、画面の高さいっぱいまで使う(仮想ボタンは画面下の左右角に重ねて表示する)。
+      // 画面中央に固定配置してから縮小するため、先に元のサイズを確定させておく
+      gameWrap.style.position = 'fixed';
+      gameWrap.style.left = '50%';
+      gameWrap.style.top = '50%';
+      gameWrap.style.width = 'max-content';
+      gameWrap.style.transform = 'none';
+      const w = gameWrap.offsetWidth, h = gameWrap.offsetHeight;
+      const factor = Math.min(1, (window.innerWidth * 0.98) / w, (window.innerHeight * 0.98) / h);
+      gameWrap.style.transformOrigin = 'center center';
+      gameWrap.style.transform = `translate(-50%, -50%) scale(${factor})`;
+      const rh = document.getElementById('rotateHint');
+      if (rh) rh.classList.remove('show');
+    } else {
+      // 縦持ち:従来どおり(画面幅に合わせ、下部の仮想ボタン分として高さの60%までに収める)
+      gameWrap.style.position = '';
+      gameWrap.style.left = '';
+      gameWrap.style.top = '';
+      gameWrap.style.width = '';
+      gameWrap.style.transform = 'scale(1)';
+      const rect = gameWrap.getBoundingClientRect();
+      const availW = window.innerWidth * 0.96;
+      const availH = window.innerHeight * 0.6; // 下部のバーチャルボタン分を確保
+      const factor = Math.min(1, availW / rect.width, availH / rect.height);
+      gameWrap.style.transform = `scale(${factor})`;
+      gameWrap.style.transformOrigin = 'top center';
+    }
     // PAUSEボタンは下部の仮想スティック/アクションボタン群と重なって押せなくなる不具合があったため、
     // 画面下へ再配置するのをやめ、CSSで指定した画面右上に固定して常に確実に押せるようにする
   }
   fitMobileScreen();
   window.addEventListener('resize', fitMobileScreen);
   window.addEventListener('orientationchange', () => setTimeout(fitMobileScreen, 200));
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fitMobileScreen);
+
+  // 全画面ボタン:Fullscreen APIが使える環境(主にAndroid)だけ表示する。
+  // iPhoneのSafariはページ全体の全画面に対応していないため、ボタンは出さない(ホーム画面に追加すれば同等の表示になる)
+  const fsBtn = document.getElementById('tFullscreen');
+  const rootEl = document.documentElement;
+  const canFullscreen = !!(rootEl.requestFullscreen || rootEl.webkitRequestFullscreen);
+  const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+  if (fsBtn && canFullscreen && !standalone) {
+    fsBtn.style.display = 'flex';
+    fsBtn.addEventListener('click', () => {
+      initAudio();
+      try {
+        const inFs = document.fullscreenElement || document.webkitFullscreenElement;
+        if (inFs) {
+          (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        } else {
+          const p = (rootEl.requestFullscreen || rootEl.webkitRequestFullscreen).call(rootEl, { navigationUI: 'hide' });
+          if (p && p.catch) p.catch(() => {});
+        }
+      } catch (err) { /* 全画面にできない環境では何もしない */ }
+    });
+    document.addEventListener('fullscreenchange', () => setTimeout(fitMobileScreen, 100));
+    document.addEventListener('webkitfullscreenchange', () => setTimeout(fitMobileScreen, 100));
+  }
+
+  // 縦持ちで起動した場合だけ、横持ちにすると画面が大きくなることを一度だけ案内する(5秒で自動的に消える)
+  const rotateHint = document.getElementById('rotateHint');
+  if (rotateHint && window.innerWidth <= window.innerHeight) {
+    rotateHint.textContent = t('landscapeHint');
+    rotateHint.classList.add('show');
+    setTimeout(() => rotateHint.classList.remove('show'), 5000);
+  }
 }
 
 // ================= Loop =================
